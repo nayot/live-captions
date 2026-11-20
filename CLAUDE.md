@@ -20,8 +20,8 @@ Live English → Thai captions: room audio → speech-to-text → translation �
 
 ```
 app/            FastAPI server: websocket audio in, broadcaster, Zoom poster
-app/engines/    stt_*.py, translate_*.py (stub, google)
-app/static/     control page, /display, /bar
+app/engines/    base.py (interfaces), stub.py, google.py
+app/static/     control.html (/), display.html (/display); bar overlay later
 config/         glossary.yaml, settings
 scripts/        zoom_probe.py (one-off caption API test)
 ```
