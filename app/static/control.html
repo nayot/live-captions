@@ -74,7 +74,8 @@
       <button class="primary" id="dwin">Open EN + TH window</button>
       <label>text size <select id="dsize" style="width:auto"><option>0.8</option><option selected>1</option><option>1.2</option><option>1.5</option></select></label>
       <label>lines <select id="dlines" style="width:auto"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
-      <a href="/display" target="_blank">or open as a tab ↗</a>
+      <label>align <select id="dalign" style="width:auto"><option value="left">left</option><option value="center" selected>centre</option><option value="right">right</option></select></label>
+      <a href="/display" target="_blank" id="dtab">or open as a tab ↗</a>
     </div>
     <div style="font-size:13px;color:#777;margin-top:6px">Drag the window to the second screen, then double-click it (or press F) for full screen.</div>
   </section>
@@ -185,9 +186,12 @@ function zoomBadge(z) {
     : failed ? `error (HTTP ${z.last_status}${z.last_error ? ', ' + z.last_error : ''}) — re-copy the token?` : '';
 }
 $('dwin').onclick = () => {
-  const url = `/display?size=${$('dsize').value}&lines=${$('dlines').value}`;
-  window.open(url, 'captions-display', 'popup,width=1280,height=720');
+  window.open(displayUrl(), 'captions-display', 'popup,width=1280,height=720');
 };
+function displayUrl() {
+  return `/display?size=${$('dsize').value}&lines=${$('dlines').value}&align=${$('dalign').value}`;
+}
+['dsize', 'dlines', 'dalign'].forEach(id => $(id).onchange = () => { $('dtab').href = displayUrl(); });
 $('itext').onkeydown = e => {
   if (e.key === 'Enter' && e.target.value.trim()) { api('/api/inject', 'POST', { text: e.target.value }); e.target.value = ''; }
 };
