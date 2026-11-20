@@ -56,6 +56,7 @@ class Settings:
     openrouter_api_key: str = ""
     translate_model: str = ""
     assemblyai_api_key: str = ""
+    stt_model: str = ""
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -76,4 +77,5 @@ class Settings:
             openrouter_api_key=e("OPENROUTER_API_KEY", ""),
             translate_model=e("TRANSLATE_MODEL", ""),
             assemblyai_api_key=e("ASSEMBLYAI_API_KEY", ""),
+            stt_model=e("STT_MODEL", ""),
         )

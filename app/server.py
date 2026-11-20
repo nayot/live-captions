@@ -38,7 +38,7 @@ def build_engines(s: Settings):
     elif s.stt_engine == "assemblyai":
         from .engines.assemblyai import AssemblyAIStt
 
-        stt = AssemblyAIStt(s.assemblyai_api_key, s.glossary.phrases)
+        stt = AssemblyAIStt(s.assemblyai_api_key, s.glossary.phrases, s.stt_model)
     else:
         stt = StubStt()
     if s.translate_engine == "google":

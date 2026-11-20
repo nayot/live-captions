@@ -28,8 +28,10 @@ RESUME_BACKLOG_CHUNKS = 20
 
 
 class AssemblyAISession:
-    def __init__(self, api_key: str, keyterms: list[str]) -> None:
+    def __init__(self, api_key: str, keyterms: list[str], model: str = "") -> None:
         params = {"sample_rate": 16000, "encoding": "pcm_s16le", "format_turns": "true"}
+        if model:
+            params["speech_model"] = model
         if keyterms:
             params["keyterms_prompt"] = json.dumps(keyterms[:100])
         self._url = f"{WS_URL}?{urlencode(params)}"
@@ -138,10 +140,11 @@ class AssemblyAISession:
 class AssemblyAIStt:
     name = "assemblyai"
 
-    def __init__(self, api_key: str, keyterms: list[str]) -> None:
+    def __init__(self, api_key: str, keyterms: list[str], model: str = "") -> None:
         if not api_key:
             raise SystemExit("ASSEMBLYAI_API_KEY is required for STT_ENGINE=assemblyai")
-        self._key, self._terms = api_key, keyterms
+        self._key, self._terms, self._model = api_key, keyterms, model
+        self.name = f"assemblyai:{model}" if model else "assemblyai"
 
     async def open(self) -> AssemblyAISession:
-        return AssemblyAISession(self._key, self._terms)
+        return AssemblyAISession(self._key, self._terms, self._model)
