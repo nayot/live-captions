@@ -146,7 +146,7 @@ function openAudioSocket() {
   ws = new WebSocket(`ws://${location.host}/ws/audio`);
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => { $('astat').textContent = 'listening'; audioButtons('on'); };
-  ws.onclose = () => { if (!node) return; $('astat').textContent = 'reconnecting…'; audioButtons('reconnecting'); setTimeout(openAudioSocket, 1500); };
+  ws.onclose = () => { if (!node) return; $('astat').textContent = 'reconnecting…'; audioButtons('reconnecting'); setTimeout(openAudioSocket, 300); };
 }
 
 function stop() {

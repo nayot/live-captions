@@ -19,6 +19,12 @@ log = logging.getLogger("live_captions.assemblyai")
 
 WS_URL = "wss://streaming.assemblyai.com/v3/ws"
 FORMAT_WAIT_S = 1.5
+# Reconnect at once after a dropped session (paid plan: 100+ new sessions/min). Only repeated failures
+# with no session starting back off, so a refused key or an outage can't become a tight loop.
+RETRY_DELAYS_S = (0.0, 0.5, 1, 2, 5, 10)
+# Audio queued while reconnecting is trimmed to the last ~2 s (100 ms chunks), so captions resume live
+# instead of replaying a backlog.
+RESUME_BACKLOG_CHUNKS = 20
 
 
 class AssemblyAISession:
@@ -48,7 +54,9 @@ class AssemblyAISession:
 
     async def close(self) -> None:
         self._closed = True
-        await self._audio.put(None)
+        if self._audio.full():  # never block here: the sender may be gone (e.g. AssemblyAI unreachable)
+            self._audio.get_nowait()
+        self._audio.put_nowait(None)
         self._task.cancel()
         await self._out.put(None)
 
@@ -81,12 +89,13 @@ class AssemblyAISession:
     async def _run(self) -> None:
         from websockets.asyncio.client import connect
 
-        backoff = 2.0
+        failures = 0
         while not self._closed:
             reason = "closed by server"
             try:
                 async with connect(self._url, additional_headers={"Authorization": self._key},
-                                   max_size=2**22) as ws:
+                                   max_size=2**22, open_timeout=5) as ws:
+                    self._trim_backlog()
 
                     async def sender():
                         while True:
@@ -101,7 +110,7 @@ class AssemblyAISession:
                         async for raw in ws:
                             msg = json.loads(raw)
                             if msg.get("type") == "Begin":
-                                backoff = 2.0  # a session really started; reset the retry delay
+                                failures = 0  # a session really started
                             await self._handle(msg)
                     finally:
                         send_task.cancel()
@@ -113,11 +122,17 @@ class AssemblyAISession:
                 reason = type(e).__name__
             if self._closed:
                 return
-            # Always wait before reconnecting: the free plan allows only 5 new sessions per minute,
-            # and a refused session (e.g. close 1008) must not turn into a tight retry loop.
-            log.warning("AssemblyAI stream ended (%s); reconnecting in %.0fs", reason, backoff)
-            await asyncio.sleep(backoff)
-            backoff = min(backoff * 2, 20)
+            delay = RETRY_DELAYS_S[min(failures, len(RETRY_DELAYS_S) - 1)]
+            failures += 1
+            log.warning("AssemblyAI stream ended (%s); reconnecting in %.1fs", reason, delay)
+            if delay:
+                await asyncio.sleep(delay)
+
+    def _trim_backlog(self) -> None:
+        while self._audio.qsize() > RESUME_BACKLOG_CHUNKS:
+            if self._audio.get_nowait() is None:  # never drop the stop signal
+                self._audio.put_nowait(None)
+                break
 
 
 class AssemblyAIStt:
