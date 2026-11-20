@@ -82,7 +82,7 @@
 
   <section>
     <h2>Live feed</h2>
-    <div id="interim" class="en"></div>
+    <div id="interim"><div class="en" id="interim_en"></div><div class="th" id="interim_th" style="color:#999"></div></div>
     <div id="feed"></div>
   </section>
 </main>
@@ -211,13 +211,18 @@ async function poll() {
 }
 setInterval(poll, 1500); poll();
 
+let interimId = -1;
 function feed() {
   const ev = new WebSocket(`ws://${location.host}/ws/events`);
   ev.onmessage = m => {
     const d = JSON.parse(m.data);
-    if (d.type === 'interim') $('interim').textContent = '… ' + d.en;
+    if (d.type === 'interim' || d.type === 'final_en') {
+      if (d.id !== interimId) { interimId = d.id; $('interim_th').textContent = ''; }
+      $('interim_en').textContent = '… ' + d.en;
+    }
+    if (d.type === 'interim_th' && d.id === interimId) $('interim_th').textContent = '… ' + d.th;
     if (d.type === 'final') {
-      $('interim').textContent = '';
+      if (d.id >= interimId) { $('interim_en').textContent = ''; $('interim_th').textContent = ''; }
       const el = document.createElement('div');
       el.innerHTML = `<div class="en"></div><div class="th"></div>`;
       el.querySelector('.en').textContent = d.en; el.querySelector('.th').textContent = d.th;

@@ -16,8 +16,10 @@ from .zoom import ZoomPoster
 
 log = logging.getLogger("live_captions.pipeline")
 
-INTERIM_TRANSLATE_EVERY_S = 2.0
-INTERIM_MIN_CHARS = 40
+# Draft Thai while the speaker is still talking: re-translate the growing sentence at most this often,
+# once it has a few words. Only finished sentences go to Zoom (its captions can't be edited in place).
+INTERIM_TRANSLATE_EVERY_S = 1.0
+INTERIM_MIN_CHARS = 15
 
 
 class Broadcaster:
