@@ -25,6 +25,8 @@
   #feed div { padding:6px 0; border-bottom:1px solid #eee; }
   #feed .en { color:#777; font-size:14px; }
   #feed .th { font-size:18px; }
+  button.connected { background:#2a7a2a; color:#fff; border-color:#2a7a2a; }
+  button.danger { background:#b00; color:#fff; border-color:#b00; }
   .ok { color:#2a7a2a; } .bad { color:#b00; }
   a { color:var(--red); }
 </style>
@@ -53,7 +55,7 @@
       <label><input type="checkbox" id="zreset"> restart numbering (new meeting)</label>
       <button id="ztest">Send test caption</button>
       <button id="zclear">Disconnect</button>
-      <span id="zstat" class="bad">not connected</span>
+      <span id="zstat" class="bad"></span>
     </div>
   </section>
 
@@ -158,13 +160,14 @@ $('zclear').onclick = async () => { await api('/api/zoom', 'DELETE'); poll(); };
 $('ztest').onclick = async () => { await api('/api/zoom/test'); setTimeout(poll, 800); };
 
 function zoomBadge(z) {
-  const el = $('zstat');
-  if (!z) { el.className = 'bad'; el.textContent = 'server not reachable'; $('zset').textContent = 'Connect'; return; }
-  const failed = z.last_status !== null && z.last_status !== undefined && (z.last_status < 200 || z.last_status >= 300);
-  if (!z.enabled) { el.className = 'bad'; el.textContent = 'not connected'; }
-  else if (failed) { el.className = 'bad'; el.textContent = `● error (HTTP ${z.last_status}${z.last_error ? ', ' + z.last_error : ''}) — re-copy the token?`; }
-  else { el.className = 'ok'; el.textContent = `● connected — ${z.posted} sent` + (z.last_status ? ` (HTTP ${z.last_status})` : ''); }
-  $('zset').textContent = z.enabled ? 'Reconnect' : 'Connect';
+  const el = $('zstat'), on = !!(z && z.enabled);
+  const failed = on && z.last_status != null && (z.last_status < 200 || z.last_status >= 300);
+  $('zset').textContent = on ? 'Connected' : 'Connect';
+  $('zset').className = on && !failed ? 'connected' : 'primary';
+  $('zclear').className = on ? 'danger' : '';
+  el.className = 'bad';
+  el.textContent = !z ? 'server not reachable'
+    : failed ? `error (HTTP ${z.last_status}${z.last_error ? ', ' + z.last_error : ''}) — re-copy the token?` : '';
 }
 $('itext').onkeydown = e => {
   if (e.key === 'Enter' && e.target.value.trim()) { api('/api/inject', 'POST', { text: e.target.value }); e.target.value = ''; }
