@@ -8,7 +8,7 @@
 <style>
   /* Second-screen display (double-click or F = full screen). Options: ?en=0 hides English, ?lines=3 Thai lines kept, ?size=1.2 scales text, ?align=left|center|right,
      ?prev=0 hides finished lines while a new one is spoken (lines then counts the live line too),
-     ?bg=black|green|blue|<hex> background colour */
+     ?bg=black|green|blue|<hex> background colour, ?header=0 hides the top bar and label */
   :root { --grey:#4A4A4A; --gold:#FFCE00; --red:#7A1020; --scale:1; --align:center; --bg:#111; --fg:#fff; --fg-en:#9a9a9a; --fg-interim:#ddd; }
   html, body { height:100%; margin:0; }
   body { background:var(--bg); color:var(--fg); font-family: Sarabun, "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
@@ -42,6 +42,7 @@ document.documentElement.style.setProperty('--scale', q.get('size') || '1');
 const align = q.get('align');
 if (['left', 'center', 'right'].includes(align)) document.documentElement.style.setProperty('--align', align);
 const keepPrev = q.get('prev') !== '0';
+if (q.get('header') === '0') document.querySelectorAll('.top, .label').forEach(el => el.style.display = 'none');
 const BG = { black: '#111111', green: '#00b140', blue: '#0047bb' };
 const bg = BG[q.get('bg')] || (/^[0-9a-f]{6}$/i.test(q.get('bg') || '') ? '#' + q.get('bg') : BG.black);
 (function setColours(hex) {
