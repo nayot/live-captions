@@ -25,6 +25,7 @@
   #feed div { padding:6px 0; border-bottom:1px solid #eee; }
   #feed .en { color:#777; font-size:14px; }
   #feed .th { font-size:18px; }
+  button:disabled { cursor:default; }
   button.connected { background:#2a7a2a; color:#fff; border-color:#2a7a2a; }
   button.danger { background:#b00; color:#fff; border-color:#b00; }
   .ok { color:#2a7a2a; } .bad { color:#b00; }
@@ -127,14 +128,14 @@ async function start() {
     $('lvl').style.width = Math.min(100, e.data.peak * 140) + '%';
     if (ws && ws.readyState === 1) ws.send(e.data.pcm);
   };
-  $('start').disabled = true; $('stop').disabled = false;
+  $('start').disabled = true; $('stop').disabled = false; audioButtons('starting');
 }
 
 function openAudioSocket() {
   ws = new WebSocket(`ws://${location.host}/ws/audio`);
   ws.binaryType = 'arraybuffer';
-  ws.onopen = () => $('astat').textContent = 'listening';
-  ws.onclose = () => { $('astat').textContent = 'reconnecting…'; if (node) setTimeout(openAudioSocket, 1500); };
+  ws.onopen = () => { $('astat').textContent = 'listening'; audioButtons('on'); };
+  ws.onclose = () => { if (!node) return; $('astat').textContent = 'reconnecting…'; audioButtons('reconnecting'); setTimeout(openAudioSocket, 1500); };
 }
 
 function stop() {
@@ -142,6 +143,14 @@ function stop() {
   if (ws) ws.close(); if (stream) stream.getTracks().forEach(t => t.stop()); if (ctx) ctx.close();
   if (n) n.port.onmessage = null;
   $('start').disabled = false; $('stop').disabled = true; $('astat').textContent = 'idle'; $('lvl').style.width = 0;
+  audioButtons('off');
+}
+
+function audioButtons(state) {
+  const on = state !== 'off';
+  $('start').textContent = state === 'on' ? 'Listening' : state === 'off' ? 'Start listening' : 'Connecting…';
+  $('start').className = state === 'on' ? 'connected' : 'primary';
+  $('stop').className = on ? 'danger' : '';
 }
 
 async function api(path, method = 'POST', body) {
