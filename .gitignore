@@ -21,3 +21,6 @@ __pycache__/
 node_modules/
 dist/
 .DS_Store
+
+# event-specific glossary (speaker names etc.)
+config/*.local.yaml

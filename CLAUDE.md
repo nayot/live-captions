@@ -16,7 +16,7 @@ Live English → Thai captions: room audio → speech-to-text → translation �
   can be tested without cloud billing.
 - Thai text: UTF-8 everywhere; display font Sarabun (Google Fonts) with a system Thai fallback.
 
-## Layout (planned)
+## Layout
 
 ```
 app/            FastAPI server: websocket audio in, broadcaster, Zoom poster
@@ -26,14 +26,21 @@ config/         glossary.yaml, settings
 scripts/        zoom_probe.py (one-off caption API test)
 ```
 
-## Run (once built)
+## Run
 
 ```
-uv sync
-uv run python -m app            # serves http://localhost:8765
-# control page: http://localhost:8765/        display: http://localhost:8765/display
+cp .env.example .env            # stub engines by default (no cloud needed)
+uv sync                         # add --extra google for the Google engines
+uv run python -m app            # http://localhost:8765  (control)  /display (second screen)
+uv run pytest -q                # tests (stub engines + mocked Zoom endpoint)
+uv run python scripts/zoom_probe.py   # Phase 1: post test lines to a live meeting's caption URL
 ```
 
 ## Status
 
-- 20.11.2026 — repo created; plan written. Next: Phase 1 Zoom probe, then the stub pipeline.
+- 20.11.2026 — repo created; plan written.
+- 20.11.2026 — Phase 2 done: server, control page (mic capture → 16 kHz PCM over websocket), display page,
+  Zoom poster (ordered, increasing seq, token masked), stub engines, tests passing. Google engines written
+  (streaming STT v1 `latest_long` + phrase hints; Translation v3 with translate="no" for glossary terms)
+  but **untested** — waiting for a cloud project. Zoom probe script ready but **not yet run against a real
+  meeting** (Thai rendering, seq start, length limit unconfirmed). Overlay (Phase 5) not started.

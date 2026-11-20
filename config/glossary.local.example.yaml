@@ -1,0 +1,6 @@
+# Copy to config/glossary.local.yaml and fill in event-specific names.
+phrases:
+  - Speaker Name
+  - Company Name
+keep:
+  - Company Name

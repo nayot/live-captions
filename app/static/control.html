@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Captions – Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --grey:#4A4A4A; --gold:#FFCE00; --red:#7A1020; --bg:#f6f6f4; --card:#fff; --line:#ddd; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Sarabun, system-ui, sans-serif; background:var(--bg); color:var(--grey); }
+  header { background:var(--red); color:#fff; padding:12px 16px; border-bottom:4px solid var(--gold); }
+  header h1 { margin:0; font-size:20px; }
+  main { max-width:960px; margin:0 auto; padding:16px; display:grid; gap:14px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; }
+  h2 { margin:0 0 10px; font-size:16px; color:var(--red); }
+  label { font-size:14px; }
+  select, input[type=text], input[type=password], textarea { width:100%; padding:8px; font:inherit; border:1px solid #bbb; border-radius:6px; }
+  button { font:inherit; padding:8px 14px; border-radius:6px; border:1px solid var(--grey); background:#fff; cursor:pointer; }
+  button.primary { background:var(--red); color:#fff; border-color:var(--red); }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+  .meter { flex:1; min-width:160px; height:14px; background:#eee; border-radius:7px; overflow:hidden; }
+  .meter > div { height:100%; width:0; background:linear-gradient(90deg, #3a3, var(--gold), #c33); }
+  .status { font-size:13px; font-family: ui-monospace, monospace; white-space:pre-wrap; background:#fafafa; padding:8px; border-radius:6px; }
+  #feed div { padding:6px 0; border-bottom:1px solid #eee; }
+  #feed .en { color:#777; font-size:14px; }
+  #feed .th { font-size:18px; }
+  .ok { color:#2a7a2a; } .bad { color:#b00; }
+  a { color:var(--red); }
+</style>
+</head>
+<body>
+<header><h1>Live Captions · Control</h1></header>
+<main>
+  <section>
+    <h2>1. Audio input</h2>
+    <label>Input device (mixer / USB audio)</label>
+    <select id="dev"></select>
+    <div class="row">
+      <button class="primary" id="start">Start listening</button>
+      <button id="stop" disabled>Stop</button>
+      <div class="meter"><div id="lvl"></div></div>
+      <span id="astat">idle</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Zoom captions</h2>
+    <label>Caption API URL (Zoom → Captions → Use a third-party CC service → Copy the API token)</label>
+    <input type="password" id="zurl" placeholder="https://wmcc.zoom.us/closedcaption?..." autocomplete="off">
+    <div class="row">
+      <button class="primary" id="zset">Connect</button>
+      <label><input type="checkbox" id="zreset"> restart numbering (new meeting)</label>
+      <button id="ztest">Send test caption</button>
+      <button id="zclear">Disconnect</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Type a line (test / manual fallback)</h2>
+    <div class="row">
+      <input type="text" id="itext" placeholder="Type English and press Enter">
+    </div>
+  </section>
+
+  <section>
+    <h2>Status</h2>
+    <div class="status" id="status">…</div>
+    <div class="row"><a href="/display" target="_blank">Open display page ↗</a></div>
+  </section>
+
+  <section>
+    <h2>Live feed</h2>
+    <div id="interim" class="en"></div>
+    <div id="feed"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let ctx, stream, node, ws;
+
+// AudioWorklet: downmix + resample to 16 kHz Int16, ~100 ms chunks
+const workletSrc = `
+class Pcm16 extends AudioWorkletProcessor {
+  constructor() { super(); this.ratio = sampleRate / 16000; this.buf = []; this.pos = 0; }
+  process(inputs) {
+    const ch = inputs[0]; if (!ch || !ch[0]) return true;
+    const n = ch[0].length, mono = new Float32Array(n);
+    for (let c = 0; c < ch.length; c++) for (let i = 0; i < n; i++) mono[i] += ch[c][i] / ch.length;
+    let peak = 0;
+    for (; this.pos < n; this.pos += this.ratio) {
+      const s = Math.max(-1, Math.min(1, mono[Math.floor(this.pos)]));
+      peak = Math.max(peak, Math.abs(s));
+      this.buf.push(s < 0 ? s * 0x8000 : s * 0x7fff);
+    }
+    this.pos -= n;
+    if (this.buf.length >= 1600) {
+      const out = Int16Array.from(this.buf); this.buf = [];
+      this.port.postMessage({ pcm: out.buffer, peak }, [out.buffer]);
+    }
+    return true;
+  }
+}
+registerProcessor('pcm16', Pcm16);`;
+
+async function listDevices() {
+  try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach(t => t.stop()); } catch (e) {}
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+  $('dev').innerHTML = devs.map(d => `<option value="${d.deviceId}">${d.label || 'Input ' + d.deviceId.slice(0, 6)}</option>`).join('');
+}
+
+async function start() {
+  stream = await navigator.mediaDevices.getUserMedia({
+    audio: { deviceId: $('dev').value ? { exact: $('dev').value } : undefined,
+             echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+  });
+  ctx = new AudioContext();
+  await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([workletSrc], { type: 'application/javascript' })));
+  node = new AudioWorkletNode(ctx, 'pcm16');
+  ctx.createMediaStreamSource(stream).connect(node);
+  openAudioSocket();
+  node.port.onmessage = e => {
+    $('lvl').style.width = Math.min(100, e.data.peak * 140) + '%';
+    if (ws && ws.readyState === 1) ws.send(e.data.pcm);
+  };
+  $('start').disabled = true; $('stop').disabled = false;
+}
+
+function openAudioSocket() {
+  ws = new WebSocket(`ws://${location.host}/ws/audio`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => $('astat').textContent = 'listening';
+  ws.onclose = () => { $('astat').textContent = 'reconnecting…'; if (node) setTimeout(openAudioSocket, 1500); };
+}
+
+function stop() {
+  const n = node; node = null;
+  if (ws) ws.close(); if (stream) stream.getTracks().forEach(t => t.stop()); if (ctx) ctx.close();
+  if (n) n.port.onmessage = null;
+  $('start').disabled = false; $('stop').disabled = true; $('astat').textContent = 'idle'; $('lvl').style.width = 0;
+}
+
+async function api(path, method = 'POST', body) {
+  const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  return r.json();
+}
+
+$('start').onclick = () => start().catch(e => alert('Audio error: ' + e.message));
+$('stop').onclick = stop;
+$('zset').onclick = async () => {
+  const r = await api('/api/zoom', 'POST', { url: $('zurl').value, reset_seq: $('zreset').checked });
+  if (!r.ok) alert(r.error); else $('zurl').value = '';
+};
+$('zclear').onclick = () => api('/api/zoom', 'DELETE');
+$('ztest').onclick = () => api('/api/zoom/test');
+$('itext').onkeydown = e => {
+  if (e.key === 'Enter' && e.target.value.trim()) { api('/api/inject', 'POST', { text: e.target.value }); e.target.value = ''; }
+};
+
+async function poll() {
+  try {
+    const s = await api('/api/status', 'GET');
+    const z = s.zoom;
+    $('status').innerHTML =
+      `engines: speech=${s.stt}  translate=${s.translate}\n` +
+      `audio clients: ${s.audio_clients}  received: ${(s.audio_bytes / 32000).toFixed(0)} s of audio\n` +
+      `display pages: ${s.display_clients}  lines: ${s.finals}  translate errors: ${s.translate_errors}\n` +
+      `zoom: ${z.enabled ? '<span class="ok">connected</span>' : '<span class="bad">not connected</span>'}` +
+      `  sent: ${z.posted}  next seq: ${z.seq}  last HTTP: ${z.last_status ?? '-'} ${z.last_error || ''}`;
+  } catch (e) { $('status').textContent = 'server not reachable'; }
+}
+setInterval(poll, 1500); poll();
+
+function feed() {
+  const ev = new WebSocket(`ws://${location.host}/ws/events`);
+  ev.onmessage = m => {
+    const d = JSON.parse(m.data);
+    if (d.type === 'interim') $('interim').textContent = '… ' + d.en;
+    if (d.type === 'final') {
+      $('interim').textContent = '';
+      const el = document.createElement('div');
+      el.innerHTML = `<div class="en"></div><div class="th"></div>`;
+      el.querySelector('.en').textContent = d.en; el.querySelector('.th').textContent = d.th;
+      $('feed').prepend(el);
+      while ($('feed').children.length > 30) $('feed').lastChild.remove();
+    }
+  };
+  ev.onclose = () => setTimeout(feed, 1500);
+  setInterval(() => ev.readyState === 1 && ev.send('ping'), 20000);
+}
+feed();
+listDevices();
+</script>
+</body>
+</html>

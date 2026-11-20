@@ -1,0 +1,37 @@
+# Terms for speech recognition hints and "keep as is" during translation.
+# Event-specific names (speakers, companies) go in config/glossary.local.yaml (git-ignored), same format.
+
+# Boosted phrases for speech-to-text
+phrases:
+  - PCB
+  - PCBA
+  - IPC
+  - IPC-A-610
+  - IPC-A-600
+  - Global Electronics Association
+  - semiconductor
+  - surface mount
+  - soldering
+  - reflow
+  - metrology
+  - optical inspection
+  - Net Zero
+  - circular economy
+  - EEC
+  - Eastern Economic Corridor
+  - Burapha University
+
+# Kept untranslated (left in English) in the Thai output
+keep:
+  - PCB
+  - PCBA
+  - IPC
+  - IPC-A-610
+  - IPC-A-600
+  - GEA
+  - EEC
+  - EEC HDC
+  - UNEP
+  - Net Zero
+  - SMT
+  - AI
