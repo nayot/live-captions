@@ -6,23 +6,25 @@
 <title>Live Captions</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  /* Second-screen display (double-click or F = full screen). Options: ?en=0 hides English, ?lines=3 Thai lines kept, ?size=1.2 scales text, ?align=left|center|right */
-  :root { --grey:#4A4A4A; --gold:#FFCE00; --red:#7A1020; --scale:1; --align:center; }
+  /* Second-screen display (double-click or F = full screen). Options: ?en=0 hides English, ?lines=3 Thai lines kept, ?size=1.2 scales text, ?align=left|center|right,
+     ?prev=0 hides finished lines while a new one is spoken (lines then counts the live line too),
+     ?bg=black|green|blue|<hex> background colour */
+  :root { --grey:#4A4A4A; --gold:#FFCE00; --red:#7A1020; --scale:1; --align:center; --bg:#111; --fg:#fff; --fg-en:#9a9a9a; --fg-interim:#ddd; }
   html, body { height:100%; margin:0; }
-  body { background:#111; color:#fff; font-family: Sarabun, "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+  body { background:var(--bg); color:var(--fg); font-family: Sarabun, "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
          display:flex; flex-direction:column; overflow:hidden; cursor:none; }
   .top { height:6px; background:var(--gold); flex:none; }
   .label { flex:none; display:flex; justify-content:space-between; align-items:center; padding:10px 3vw;
-           font-size:calc(1.6vw * var(--scale)); color:#bbb; }
+           font-size:calc(1.6vw * var(--scale)); color:var(--fg-en); }
   .label .live { background:var(--red); color:#fff; padding:2px 12px; border-radius:4px; font-weight:600; }
   .label .dot { display:inline-block; width:.6em; height:.6em; border-radius:50%; background:#666; margin-right:.4em; }
   .label .dot.on { background:#3c3; }
   #lines { flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding:0 3vw 3vh; gap:2.2vh; text-align:var(--align); }
-  .cap .en { font-size:calc(2.2vw * var(--scale)); color:#9a9a9a; line-height:1.3; }
+  .cap .en { font-size:calc(2.2vw * var(--scale)); color:var(--fg-en); line-height:1.3; }
   .cap .th { font-size:calc(4.2vw * var(--scale)); font-weight:600; line-height:1.35; }
   .cap.old { opacity:.45; }
-  .cap.interim .th { color:#ddd; font-weight:400; }
-  .cap.interim .en { color:#777; }
+  .cap.interim .th { color:var(--fg-interim); font-weight:400; }
+  .cap.interim .en { color:var(--fg-en); opacity:.8; }
 </style>
 </head>
 <body>
@@ -39,6 +41,17 @@ const keep = Math.max(1, parseInt(q.get('lines') || '2', 10));
 document.documentElement.style.setProperty('--scale', q.get('size') || '1');
 const align = q.get('align');
 if (['left', 'center', 'right'].includes(align)) document.documentElement.style.setProperty('--align', align);
+const keepPrev = q.get('prev') !== '0';
+const BG = { black: '#111111', green: '#00b140', blue: '#0047bb' };
+const bg = BG[q.get('bg')] || (/^[0-9a-f]{6}$/i.test(q.get('bg') || '') ? '#' + q.get('bg') : BG.black);
+(function setColours(hex) {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;       // light background -> dark text
+  const css = document.documentElement.style;
+  css.setProperty('--bg', hex);
+  if (lum > 0.55) { css.setProperty('--fg', '#111'); css.setProperty('--fg-en', '#333'); css.setProperty('--fg-interim', '#333'); }
+  else if (hex !== BG.black) { css.setProperty('--fg-en', '#f0f0f0'); css.setProperty('--fg-interim', '#f0f0f0'); }
+})(bg);
 const lines = document.getElementById('lines');
 const finals = [];          // {en, th}
 let interim = null;         // {id, en, th}
@@ -52,7 +65,8 @@ function cap(en, th, cls) {
 }
 function render() {
   lines.replaceChildren();
-  finals.slice(-keep).forEach((f, i, a) => lines.append(cap(f.en, f.th, i < a.length - 1 || interim ? 'old' : '')));
+  const n = keepPrev ? keep : Math.max(0, keep - (interim ? 1 : 0));
+  (n ? finals.slice(-n) : []).forEach((f, i, a) => lines.append(cap(f.en, f.th, i < a.length - 1 || interim ? 'old' : '')));
   if (interim) lines.append(cap(interim.en, interim.th || '…', 'interim'));
 }
 function connect() {
