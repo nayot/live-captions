@@ -81,12 +81,12 @@ class AssemblyAISession:
     async def _run(self) -> None:
         from websockets.asyncio.client import connect
 
-        backoff = 1.0
+        backoff = 2.0
         while not self._closed:
+            reason = "closed by server"
             try:
                 async with connect(self._url, additional_headers={"Authorization": self._key},
                                    max_size=2**22) as ws:
-                    backoff = 1.0
 
                     async def sender():
                         while True:
@@ -99,15 +99,25 @@ class AssemblyAISession:
                     send_task = asyncio.create_task(sender())
                     try:
                         async for raw in ws:
-                            await self._handle(json.loads(raw))
+                            msg = json.loads(raw)
+                            if msg.get("type") == "Begin":
+                                backoff = 2.0  # a session really started; reset the retry delay
+                            await self._handle(msg)
                     finally:
                         send_task.cancel()
+                    if ws.close_code not in (None, 1000):
+                        reason = f"close {ws.close_code} {ws.close_reason or ''}".strip()
             except asyncio.CancelledError:
                 return
             except Exception as e:
-                log.warning("AssemblyAI stream ended: %s; reconnecting in %.0fs", type(e).__name__, backoff)
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 10)
+                reason = type(e).__name__
+            if self._closed:
+                return
+            # Always wait before reconnecting: the free plan allows only 5 new sessions per minute,
+            # and a refused session (e.g. close 1008) must not turn into a tight retry loop.
+            log.warning("AssemblyAI stream ended (%s); reconnecting in %.0fs", reason, backoff)
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 20)
 
 
 class AssemblyAIStt:
