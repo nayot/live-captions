@@ -53,6 +53,7 @@
       <label><input type="checkbox" id="zreset"> restart numbering (new meeting)</label>
       <button id="ztest">Send test caption</button>
       <button id="zclear">Disconnect</button>
+      <span id="zstat" class="bad">not connected</span>
     </div>
   </section>
 
@@ -151,9 +152,20 @@ $('stop').onclick = stop;
 $('zset').onclick = async () => {
   const r = await api('/api/zoom', 'POST', { url: $('zurl').value, reset_seq: $('zreset').checked });
   if (!r.ok) alert(r.error); else $('zurl').value = '';
+  poll();
 };
-$('zclear').onclick = () => api('/api/zoom', 'DELETE');
-$('ztest').onclick = () => api('/api/zoom/test');
+$('zclear').onclick = async () => { await api('/api/zoom', 'DELETE'); poll(); };
+$('ztest').onclick = async () => { await api('/api/zoom/test'); setTimeout(poll, 800); };
+
+function zoomBadge(z) {
+  const el = $('zstat');
+  if (!z) { el.className = 'bad'; el.textContent = 'server not reachable'; $('zset').textContent = 'Connect'; return; }
+  const failed = z.last_status !== null && z.last_status !== undefined && (z.last_status < 200 || z.last_status >= 300);
+  if (!z.enabled) { el.className = 'bad'; el.textContent = 'not connected'; }
+  else if (failed) { el.className = 'bad'; el.textContent = `● error (HTTP ${z.last_status}${z.last_error ? ', ' + z.last_error : ''}) — re-copy the token?`; }
+  else { el.className = 'ok'; el.textContent = `● connected — ${z.posted} sent` + (z.last_status ? ` (HTTP ${z.last_status})` : ''); }
+  $('zset').textContent = z.enabled ? 'Reconnect' : 'Connect';
+}
 $('itext').onkeydown = e => {
   if (e.key === 'Enter' && e.target.value.trim()) { api('/api/inject', 'POST', { text: e.target.value }); e.target.value = ''; }
 };
@@ -168,7 +180,8 @@ async function poll() {
       `display pages: ${s.display_clients}  lines: ${s.finals}  translate errors: ${s.translate_errors}\n` +
       `zoom: ${z.enabled ? '<span class="ok">connected</span>' : '<span class="bad">not connected</span>'}` +
       `  sent: ${z.posted}  next seq: ${z.seq}  last HTTP: ${z.last_status ?? '-'} ${z.last_error || ''}`;
-  } catch (e) { $('status').textContent = 'server not reachable'; }
+    zoomBadge(z);
+  } catch (e) { $('status').innerHTML = '<span class="bad">server not reachable — is "uv run python -m app" still running?</span>'; zoomBadge(null); }
 }
 setInterval(poll, 1500); poll();
 
