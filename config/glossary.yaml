@@ -20,6 +20,28 @@ phrases:
   - EEC
   - Eastern Economic Corridor
   - Burapha University
+  - printed circuit board
+  - wire bonding
+  - wafer
+  - fab
+  - back-end assembly
+  - OSAT
+  - cleanroom
+  - workmanship
+  - acceptance criteria
+  - automated optical inspection
+  - AOI
+  - X-ray inspection
+  - coordinate measuring machine
+  - CMM
+  - photonics
+  - optical communication
+  - workforce development
+  - supply chain
+  - e-waste
+  - carbon footprint
+  - Scope 3
+  - decarbonisation
 
 # Kept untranslated (left in English) in the Thai output
 keep:
@@ -35,3 +57,7 @@ keep:
   - Net Zero
   - SMT
   - AI
+  - AOI
+  - CMM
+  - OSAT
+  - Scope 3
