@@ -45,6 +45,13 @@ uv run python scripts/zoom_probe.py   # Phase 1: post test lines to a live meeti
   but **untested** — waiting for a cloud project. Zoom probe script ready but **not yet run against a real
   meeting** (Thai rendering, seq start, length limit unconfirmed). Overlay (Phase 5) not started.
 - 20.11.2026 — Cheaper engines added and chosen as default for the event: **AssemblyAI** Universal-Streaming
-  (STT, ~USD 0.15/h, keyterms from glossary) + **OpenRouter** chat model for translation (model id in
+  (STT, keyterms from glossary) + **OpenRouter** chat model for translation (model id in
   `TRANSLATE_MODEL`; prompt keeps glossary terms in English, 2 previous lines as context). Unit-tested with
   mocks only; **not yet run against the live services** (waiting for keys in `.env`).
+- 20.11 (evening) — Both keys in `.env` and tested live (speech clip → Thai, no Zoom needed). Pinned
+  `STT_MODEL=assemblyai-stt-3-7-realtime-agent` (USD 0.45/h; AssemblyAI's default when unset, so pinned to stop
+  silent changes); translation `anthropic/claude-haiku-5.5`. Card added to AssemblyAI (lifts 5 new sessions/min
+  limit). Reconnect is immediate, backs off only on repeated failures. Draft Thai updates ~1 s while speaking
+  (display + control page); Zoom gets finished lines only. Display options: size, lines, align, previous line,
+  background (black/green/blue/custom), header on/off. Event glossary (speakers, companies) in
+  `config/glossary.local.yaml` — git-ignored, copy it to the captions laptop.

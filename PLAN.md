@@ -16,7 +16,7 @@ First target: a one-day hybrid seminar on **Tue 24.11.2026**, with a full tech c
 | 0 | Repo, plan, CLAUDE.md | 20.11 |
 | 1 | **Zoom probe**: post one Thai line to a live meeting's caption token; confirm Thai renders, `seq` rules, length limit, token re-copy behaviour | 20–21.11 |
 | 2 | **Pipeline with stub engines**: typed text / audio file → (stub) STT → (stub) translate → Zoom poster + display page. Runs end to end with no cloud account | 21.11 |
-| 3 | **Cloud engines**: AssemblyAI streaming STT (default; ~USD 0.15/h) + OpenRouter chat model for EN→TH (default); Google STT/Translation kept as alternative | 21–22.11 (needs API keys) |
+| 3 | **Cloud engines**: AssemblyAI streaming STT (3.7 Realtime Agent, pinned via `STT_MODEL`; USD 0.45/h) + OpenRouter chat model for EN→TH (default); Google STT/Translation kept as alternative | 21–22.11 (needs API keys) |
 | 4 | **Display page**: second screen, EN line + TH line, large type, BUU Grey/Gold + Engineering dark red | 22.11 |
 | 5 | **Overlay**: Chrome Document Picture-in-Picture subtitle bar (always on top); Electron transparent overlay only if PiP fails over PowerPoint | after 24.11 unless time allows |
 
@@ -50,7 +50,7 @@ mixer AUX/USB ──► captions laptop: Chrome control page (getUserMedia, 16 k
 
 1. **API keys** (blocking Phase 3; needed by **Sat 21.11** to make Monday's test): AssemblyAI key
    (free USD 50 credit covers the event) and an OpenRouter key + chosen model. Estimated cost for one
-   8-hour day: ~USD 2. Google Cloud (~USD 10–15/day) remains a fallback.
+   8-hour day: ~USD 5 (speech ~3.60 + translation ~1.50). Google Cloud (~USD 10–15/day) remains a fallback.
 2. **Captions laptop**: which machine and OS; how it gets mixer audio (USB interface or 3.5 mm line-in).
 3. **Zoom caption language**: one stream only (Thai). English speakers online get no captions from us.
 
