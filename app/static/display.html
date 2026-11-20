@@ -6,7 +6,7 @@
 <title>Live Captions</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  /* Second-screen display. Options: ?en=0 hides English, ?lines=3 Thai lines kept, ?size=1.2 scales text */
+  /* Second-screen display (double-click or F = full screen). Options: ?en=0 hides English, ?lines=3 Thai lines kept, ?size=1.2 scales text */
   :root { --grey:#4A4A4A; --gold:#FFCE00; --red:#7A1020; --scale:1; }
   html, body { height:100%; margin:0; }
   body { background:#111; color:#fff; font-family: Sarabun, "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
@@ -69,6 +69,14 @@ function connect() {
   setInterval(() => ws.readyState === 1 && ws.send('ping'), 20000);
 }
 connect();
+
+// Full screen: double-click or F (Esc leaves). Browsers require a user gesture, so it can't start on its own.
+function toggleFull() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
+document.addEventListener('dblclick', toggleFull);
+document.addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F') toggleFull(); });
 </script>
 </body>
 </html>
