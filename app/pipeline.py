@@ -88,7 +88,7 @@ class Pipeline:
 
     async def _interim_translate(self, uid: int, text: str) -> None:
         try:
-            th = await self.translator.translate(text)
+            th = await self.translator.translate(text, final=False)
         except Exception as e:
             log.warning("interim translate failed: %s", e)
             return

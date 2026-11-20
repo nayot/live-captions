@@ -53,6 +53,9 @@ class Settings:
     zoom_cc_url: str
     transcript_dir: str
     glossary: Glossary
+    openrouter_api_key: str = ""
+    translate_model: str = ""
+    assemblyai_api_key: str = ""
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -70,4 +73,7 @@ class Settings:
             zoom_cc_url=e("ZOOM_CC_URL", ""),
             transcript_dir=e("TRANSCRIPT_DIR", "transcripts"),
             glossary=Glossary.load(ROOT / "config/glossary.yaml", ROOT / "config/glossary.local.yaml"),
+            openrouter_api_key=e("OPENROUTER_API_KEY", ""),
+            translate_model=e("TRANSLATE_MODEL", ""),
+            assemblyai_api_key=e("ASSEMBLYAI_API_KEY", ""),
         )

@@ -35,12 +35,20 @@ def build_engines(s: Settings):
         from .engines.google import GoogleStt
 
         stt = GoogleStt(s.stt_language, s.glossary.phrases)
+    elif s.stt_engine == "assemblyai":
+        from .engines.assemblyai import AssemblyAIStt
+
+        stt = AssemblyAIStt(s.assemblyai_api_key, s.glossary.phrases)
     else:
         stt = StubStt()
     if s.translate_engine == "google":
         from .engines.google import GoogleTranslator
 
         tr = GoogleTranslator(s.google_project, s.target_language, s.glossary.keep)
+    elif s.translate_engine == "openrouter":
+        from .engines.openrouter import OpenRouterTranslator
+
+        tr = OpenRouterTranslator(s.openrouter_api_key, s.translate_model, s.glossary.keep)
     else:
         tr = StubTranslator()
     return stt, tr

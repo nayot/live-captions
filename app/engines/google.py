@@ -122,7 +122,7 @@ class GoogleTranslator:
             t = self._keep_re.sub(r'<span translate="no">\1</span>', t)
         return t
 
-    async def translate(self, text: str) -> str:
+    async def translate(self, text: str, final: bool = True) -> str:
         resp = await self._client.translate_text(
             request={
                 "parent": self._parent,

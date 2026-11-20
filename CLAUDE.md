@@ -20,7 +20,7 @@ Live English → Thai captions: room audio → speech-to-text → translation �
 
 ```
 app/            FastAPI server: websocket audio in, broadcaster, Zoom poster
-app/engines/    base.py (interfaces), stub.py, google.py
+app/engines/    base.py (interfaces), stub.py, assemblyai.py (STT), openrouter.py (translation), google.py (both)
 app/static/     control.html (/), display.html (/display); bar overlay later
 config/         glossary.yaml, settings
 scripts/        zoom_probe.py (one-off caption API test)
@@ -44,3 +44,7 @@ uv run python scripts/zoom_probe.py   # Phase 1: post test lines to a live meeti
   (streaming STT v1 `latest_long` + phrase hints; Translation v3 with translate="no" for glossary terms)
   but **untested** — waiting for a cloud project. Zoom probe script ready but **not yet run against a real
   meeting** (Thai rendering, seq start, length limit unconfirmed). Overlay (Phase 5) not started.
+- 20.11.2026 — Cheaper engines added and chosen as default for the event: **AssemblyAI** Universal-Streaming
+  (STT, ~USD 0.15/h, keyterms from glossary) + **OpenRouter** chat model for translation (model id in
+  `TRANSLATE_MODEL`; prompt keeps glossary terms in English, 2 previous lines as context). Unit-tested with
+  mocks only; **not yet run against the live services** (waiting for keys in `.env`).

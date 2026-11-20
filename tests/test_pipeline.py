@@ -78,3 +78,41 @@ def test_audio_socket_accepts_pcm():
         with c.websocket_connect("/ws/audio") as ws:
             ws.send_bytes(b"\x00\x00" * 1600)
         assert c.get("/api/status").json()["audio_bytes"] == 3200
+
+
+async def test_openrouter_translator_prompt_and_context():
+    from app.engines.openrouter import OpenRouterTranslator
+
+    calls = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content)
+        calls.append((req.headers["authorization"], body))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "สวัสดีครับ"}}]})
+
+    tr = OpenRouterTranslator("sk-test", "some/model", ["PCBA", "IPC-A-610"],
+                              client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    assert await tr.translate("Hello", final=True) == "สวัสดีครับ"
+    await tr.translate("draft words", final=False)
+    await tr.translate("Next line")
+    auth, body = calls[-1]
+    assert auth == "Bearer sk-test" and body["model"] == "some/model"
+    assert "PCBA" in body["messages"][0]["content"]
+    user = body["messages"][1]["content"]
+    assert "Hello" in user and "draft words" not in user and user.endswith("Next line")
+
+
+async def test_assemblyai_turn_handling():
+    from app.engines.assemblyai import AssemblyAISession
+
+    s = AssemblyAISession.__new__(AssemblyAISession)  # no network: test the message handler only
+    s._out, s._pending, s._finalised = asyncio.Queue(), {}, set()
+    await s._handle({"type": "Turn", "turn_order": 0, "transcript": "hello every", "end_of_turn": False})
+    await s._handle({"type": "Turn", "turn_order": 0, "transcript": "hello everyone", "end_of_turn": True,
+                     "turn_is_formatted": False})
+    await s._handle({"type": "Turn", "turn_order": 0, "transcript": "Hello, everyone.", "end_of_turn": True,
+                     "turn_is_formatted": True})
+    got = [s._out.get_nowait() for _ in range(3)]
+    assert [g.final for g in got] == [False, False, True] and got[-1].text == "Hello, everyone."
+    await asyncio.sleep(1.6)
+    assert s._out.empty()  # fallback cancelled, no duplicate final

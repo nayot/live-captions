@@ -45,7 +45,7 @@ class StubTranslator:
 
     name = "stub"
 
-    async def translate(self, text: str) -> str:
+    async def translate(self, text: str, final: bool = True) -> str:
         out = text
         for en, th in _DEMO.items():
             out = out.replace(en, th).replace(en.capitalize(), th)
