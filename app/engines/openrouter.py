@@ -22,21 +22,27 @@ Rules:
 - Keep these terms exactly as written, in English: {keep}.
 - Keep person names, company names, model numbers and standards (e.g. IPC-A-610) in English.
 - The transcript may contain recognition errors; translate the most likely intended meaning.
-- If the line is only filler ("um", "okay so"), output it briefly in Thai or leave it nearly empty."""
+- If the line is only filler ("um", "okay so"), output it briefly in Thai or leave it nearly empty.{speaker}"""
+
+SPEAKER = {
+    "male": "\n- The speaker is male: when Thai needs a polite particle or first-person pronoun, use ครับ and ผม.",
+    "female": "\n- The speaker is female: when Thai needs a polite particle or first-person pronoun, use ค่ะ/คะ and ดิฉัน.",
+}
 
 
 class OpenRouterTranslator:
     name = "openrouter"
 
     def __init__(self, api_key: str, model: str, keep: list[str], context_lines: int = 2,
-                 client: httpx.AsyncClient | None = None) -> None:
+                 speaker: str = "", client: httpx.AsyncClient | None = None) -> None:
         if not api_key:
             raise SystemExit("OPENROUTER_API_KEY is required for TRANSLATE_ENGINE=openrouter")
         if not model:
             raise SystemExit("TRANSLATE_MODEL is required for TRANSLATE_ENGINE=openrouter")
         self.model = model
         self.name = f"openrouter:{model}"
-        self._system = SYSTEM.format(keep=", ".join(keep) if keep else "(none)")
+        self._system = SYSTEM.format(keep=", ".join(keep) if keep else "(none)",
+                                     speaker=SPEAKER.get(speaker.strip().lower(), ""))
         self._ctx: deque[str] = deque(maxlen=context_lines)
         self._client = client or httpx.AsyncClient(timeout=8.0)
         self._headers = {

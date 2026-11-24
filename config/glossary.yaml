@@ -42,6 +42,20 @@ phrases:
   - carbon footprint
   - Scope 3
   - decarbonisation
+  - J-STD-001
+  - IPC/WHMA-A-620
+  - IPC-7711/21
+  - IPC-6012
+  - IPC-CID
+  - Certified Interconnect Designer
+  - EMS
+  - OEM
+  - IPC Class 3
+  - high-reliability electronics
+  - wire harness
+  - rework
+  - gap analysis
+  - smart factory
 
 # Kept untranslated (left in English) in the Thai output
 keep:
@@ -61,3 +75,17 @@ keep:
   - CMM
   - OSAT
   - Scope 3
+  - J-STD-001
+  - IPC-J-STD-001
+  - IPC/WHMA-A-620
+  - IPC-7711/21
+  - IPC-6012
+  - IPC-CID
+  - IPC-CID+
+  - WHMA
+  - EMS
+  - OEM
+  - SME
+  - IPC Class 1
+  - IPC Class 2
+  - IPC Class 3

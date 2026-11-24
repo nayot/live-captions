@@ -78,8 +78,14 @@
       <label><input type="checkbox" id="dprev" checked> keep previous line while a new one is spoken</label>
       <label>background <select id="dbg" style="width:auto"><option value="black">black</option><option value="green">green</option><option value="blue">blue</option><option value="custom">custom…</option></select></label>
       <input type="color" id="dbgc" value="#333333" style="display:none">
+      <label>text colour <select id="dfg" style="width:auto"><option value="auto">auto</option><option value="white">white</option><option value="yellow">yellow</option><option value="black">black</option><option value="custom">custom…</option></select></label>
+      <input type="color" id="dfgc" value="#ffffff" style="display:none">
       <label><input type="checkbox" id="dheader" checked> show header</label>
       <a href="/display" target="_blank" id="dtab">or open as a tab ↗</a>
+    </div>
+    <div class="row" id="lanrow" style="font-size:14px">
+      <span id="lantext">Other machines: set <code>HOST=0.0.0.0</code> in <code>.env</code> and restart to share the display.</span>
+      <button id="lancopy" style="display:none">Copy</button>
     </div>
     <div style="font-size:13px;color:#777;margin-top:6px">Drag the window to the second screen, then double-click it (or press F) for full screen.</div>
   </section>
@@ -195,12 +201,25 @@ $('dwin').onclick = () => {
 function displayUrl() {
   const bg = $('dbg').value === 'custom' ? $('dbgc').value.slice(1) : $('dbg').value;
   return `/display?size=${$('dsize').value}&lines=${$('dlines').value}&align=${$('dalign').value}` +
-         `&prev=${$('dprev').checked ? 1 : 0}&bg=${bg}&header=${$('dheader').checked ? 1 : 0}`;
+         `&prev=${$('dprev').checked ? 1 : 0}&bg=${bg}&header=${$('dheader').checked ? 1 : 0}` +
+         ($('dfg').value === 'auto' ? '' : `&fg=${$('dfg').value === 'custom' ? $('dfgc').value.slice(1) : $('dfg').value}`);
 }
-['dsize', 'dlines', 'dalign', 'dprev', 'dbg', 'dbgc', 'dheader'].forEach(id => $(id).onchange = $(id).oninput = () => {
+['dsize', 'dlines', 'dalign', 'dprev', 'dbg', 'dbgc', 'dfg', 'dfgc', 'dheader'].forEach(id => $(id).onchange = $(id).oninput = () => {
   $('dbgc').style.display = $('dbg').value === 'custom' ? '' : 'none';
+  $('dfgc').style.display = $('dfg').value === 'custom' ? '' : 'none';
   $('dtab').href = displayUrl();
+  showLan();
 });
+let lanBase = '';
+function showLan() {
+  if (!lanBase) return;
+  const url = lanBase + displayUrl();
+  $('lantext').innerHTML = 'Other machines (with the options above): <a target="_blank"></a>';
+  $('lantext').querySelector('a').href = url;
+  $('lantext').querySelector('a').textContent = url;
+  $('lancopy').style.display = '';
+}
+$('lancopy').onclick = () => navigator.clipboard.writeText(lanBase + displayUrl());
 $('itext').onkeydown = e => {
   if (e.key === 'Enter' && e.target.value.trim()) { api('/api/inject', 'POST', { text: e.target.value }); e.target.value = ''; }
 };
@@ -208,6 +227,7 @@ $('itext').onkeydown = e => {
 async function poll() {
   try {
     const s = await api('/api/status', 'GET');
+    if ((s.lan_base || '') !== lanBase) { lanBase = s.lan_base || ''; showLan(); }
     const z = s.zoom;
     $('status').innerHTML =
       `engines: speech=${s.stt}  translate=${s.translate}\n` +

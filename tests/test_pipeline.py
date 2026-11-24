@@ -116,3 +116,15 @@ async def test_assemblyai_turn_handling():
     assert [g.final for g in got] == [False, False, True] and got[-1].text == "Hello, everyone."
     await asyncio.sleep(1.6)
     assert s._out.empty()  # fallback cancelled, no duplicate final
+
+
+def test_lan_clients_get_display_only():
+    from app.server import create_app as mk
+    app = mk(Settings.from_env())
+    with TestClient(app, client=("10.0.0.9", 5000)) as c:
+        assert c.get("/display").status_code == 200
+        assert c.get("/").status_code == 403
+        assert c.get("/api/status").status_code == 403
+        assert c.post("/api/zoom", json={"url": "https://x"}).status_code == 403
+    with TestClient(app) as c:
+        assert c.get("/").status_code == 200

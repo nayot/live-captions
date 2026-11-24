@@ -57,6 +57,8 @@ class Settings:
     translate_model: str = ""
     assemblyai_api_key: str = ""
     stt_model: str = ""
+    host: str = "127.0.0.1"
+    speaker_gender: str = ""
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -78,4 +80,6 @@ class Settings:
             translate_model=e("TRANSLATE_MODEL", ""),
             assemblyai_api_key=e("ASSEMBLYAI_API_KEY", ""),
             stt_model=e("STT_MODEL", ""),
+            host=e("HOST", "127.0.0.1"),
+            speaker_gender=e("SPEAKER_GENDER", ""),
         )

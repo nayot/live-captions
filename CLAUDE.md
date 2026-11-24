@@ -55,3 +55,9 @@ uv run python scripts/zoom_probe.py   # Phase 1: post test lines to a live meeti
   (display + control page); Zoom gets finished lines only. Display options: size, lines, align, previous line,
   background (black/green/blue/custom), header on/off. Event glossary (speakers, companies) in
   `config/glossary.local.yaml` — git-ignored, copy it to the captions laptop.
+- 23.11.2026 — `HOST=0.0.0.0` in `.env` lets other machines on the network open `http://<ip>:8765/display`.
+  Other machines get the display only (control page, audio and Zoom API return 403 to non-local clients).
+- 24.11.2026 — Control page shows the display link for other machines with the chosen options (incl. `fg` text
+  colour). `SPEAKER_GENDER=male|female` sets ครับ/ผม or ค่ะ/ดิฉัน in the translation. GEA seminar terms added
+  (standards in `glossary.yaml`; names/companies in the git-ignored `glossary.local.yaml` on the MacBook).
+  STT keyterms are capped at 100 (base list first) — currently 92.

@@ -8,7 +8,7 @@
 <style>
   /* Second-screen display (double-click or F = full screen). Options: ?en=0 hides English, ?lines=3 Thai lines kept, ?size=1.2 scales text, ?align=left|center|right,
      ?prev=0 hides finished lines while a new one is spoken (lines then counts the live line too),
-     ?bg=black|green|blue|<hex> background colour, ?header=0 hides the top bar and label */
+     ?bg=black|green|blue|<hex> background colour, ?fg=auto|white|yellow|black|<hex> Thai text colour, ?header=0 hides the top bar and label */
   :root { --grey:#4A4A4A; --gold:#FFCE00; --red:#7A1020; --scale:1; --align:center; --bg:#111; --fg:#fff; --fg-en:#9a9a9a; --fg-interim:#ddd; }
   html, body { height:100%; margin:0; }
   body { background:var(--bg); color:var(--fg); font-family: Sarabun, "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
@@ -53,6 +53,9 @@ const bg = BG[q.get('bg')] || (/^[0-9a-f]{6}$/i.test(q.get('bg') || '') ? '#' + 
   if (lum > 0.55) { css.setProperty('--fg', '#111'); css.setProperty('--fg-en', '#333'); css.setProperty('--fg-interim', '#333'); }
   else if (hex !== BG.black) { css.setProperty('--fg-en', '#f0f0f0'); css.setProperty('--fg-interim', '#f0f0f0'); }
 })(bg);
+const FG = { white: '#ffffff', yellow: '#ffe14d', black: '#111111' };
+const fg = FG[q.get('fg')] || (/^[0-9a-f]{6}$/i.test(q.get('fg') || '') ? '#' + q.get('fg') : '');
+if (fg) { document.documentElement.style.setProperty('--fg', fg); document.documentElement.style.setProperty('--fg-interim', fg); }
 const lines = document.getElementById('lines');
 const finals = [];          // {en, th}
 let interim = null;         // {id, en, th}

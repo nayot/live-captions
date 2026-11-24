@@ -48,10 +48,49 @@ def build_engines(s: Settings):
     elif s.translate_engine == "openrouter":
         from .engines.openrouter import OpenRouterTranslator
 
-        tr = OpenRouterTranslator(s.openrouter_api_key, s.translate_model, s.glossary.keep)
+        tr = OpenRouterTranslator(s.openrouter_api_key, s.translate_model, s.glossary.keep,
+                                  speaker=s.speaker_gender)
     else:
         tr = StubTranslator()
     return stt, tr
+
+
+LAN_PATHS = ("/display", "/ws/events", "/static/")
+LOCAL_CLIENTS = {"127.0.0.1", "::1", "testclient"}
+
+
+class LanDisplayOnly:
+    """Other machines (HOST=0.0.0.0) get the display page only; the control page, audio and the
+    Zoom API stay on this machine, so nobody on the network can read or change the caption URL."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            client = (scope.get("client") or ("127.0.0.1",))[0]
+            path = scope["path"]
+            if client not in LOCAL_CLIENTS and not (path == "/display" or path.startswith(LAN_PATHS)):
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                    return
+                await send({"type": "http.response.start", "status": 403,
+                            "headers": [(b"content-type", b"text/plain; charset=utf-8")]})
+                await send({"type": "http.response.body",
+                            "body": b"Only /display is available from other machines."})
+                return
+        await self.app(scope, receive, send)
+
+
+def lan_ip() -> str:
+    """This machine's address on the local network (re-read each call: the network can change)."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sk:
+        try:
+            sk.connect(("10.255.255.255", 1))  # no packet sent; picks the outgoing interface
+            return sk.getsockname()[0]
+        except OSError:
+            return ""
 
 
 def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None) -> FastAPI:
@@ -70,6 +109,7 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
         await zoom.stop()
 
     app = FastAPI(title="live-captions", lifespan=lifespan)
+    app.add_middleware(LanDisplayOnly)
     app.state.pipeline, app.state.zoom, app.state.settings = pipe, zoom, s
 
     @app.get("/")
@@ -154,6 +194,8 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
             "finals": pipe.finals,
             "translate_errors": pipe.errors,
             "zoom": zoom.status(),
+            "lan_base": (f"http://{ip}:{s.port}" if s.host not in ("127.0.0.1", "localhost", "::1")
+                         and (ip := lan_ip()) else ""),
         }
 
     return app
