@@ -81,6 +81,7 @@
       <label>text colour <select id="dfg" style="width:auto"><option value="auto">auto</option><option value="white">white</option><option value="yellow">yellow</option><option value="black">black</option><option value="custom">custom…</option></select></label>
       <input type="color" id="dfgc" value="#ffffff" style="display:none">
       <label><input type="checkbox" id="dheader" checked> show header</label>
+      <label><input type="checkbox" id="dorig" checked> show original (untick: translation only)</label>
       <a href="/display" target="_blank" id="dtab">or open as a tab ↗</a>
     </div>
     <div class="row" id="lanrow" style="font-size:14px">
@@ -202,9 +203,10 @@ function displayUrl() {
   const bg = $('dbg').value === 'custom' ? $('dbgc').value.slice(1) : $('dbg').value;
   return `/display?size=${$('dsize').value}&lines=${$('dlines').value}&align=${$('dalign').value}` +
          `&prev=${$('dprev').checked ? 1 : 0}&bg=${bg}&header=${$('dheader').checked ? 1 : 0}` +
+         ($('dorig').checked ? '' : '&orig=0') +
          ($('dfg').value === 'auto' ? '' : `&fg=${$('dfg').value === 'custom' ? $('dfgc').value.slice(1) : $('dfg').value}`);
 }
-['dsize', 'dlines', 'dalign', 'dprev', 'dbg', 'dbgc', 'dfg', 'dfgc', 'dheader'].forEach(id => $(id).onchange = $(id).oninput = () => {
+['dsize', 'dlines', 'dalign', 'dprev', 'dbg', 'dbgc', 'dfg', 'dfgc', 'dheader', 'dorig'].forEach(id => $(id).onchange = $(id).oninput = () => {
   $('dbgc').style.display = $('dbg').value === 'custom' ? '' : 'none';
   $('dfgc').style.display = $('dfg').value === 'custom' ? '' : 'none';
   $('dtab').href = displayUrl();

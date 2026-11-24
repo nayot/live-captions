@@ -8,7 +8,8 @@
 <style>
   /* Second-screen display (double-click or F = full screen). Options: ?en=0 hides English, ?lines=3 Thai lines kept, ?size=1.2 scales text, ?align=left|center|right,
      ?prev=0 hides finished lines while a new one is spoken (lines then counts the live line too),
-     ?bg=black|green|blue|<hex> background colour, ?fg=auto|white|yellow|black|<hex> Thai text colour, ?header=0 hides the top bar and label */
+     ?bg=black|green|blue|<hex> background colour, ?fg=auto|white|yellow|black|<hex> Thai text colour, ?orig=0 shows only the translation (Thai for English speech,
+     English for Thai speech), ?header=0 hides the top bar and label */
   :root { --grey:#4A4A4A; --gold:#FFCE00; --red:#7A1020; --scale:1; --align:center; --bg:#111; --fg:#fff; --fg-en:#9a9a9a; --fg-interim:#ddd; }
   html, body { height:100%; margin:0; }
   body { background:var(--bg); color:var(--fg); font-family: Sarabun, "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
@@ -37,6 +38,7 @@
 <script>
 const q = new URLSearchParams(location.search);
 const showEn = q.get('en') !== '0';
+const showOrig = q.get('orig') !== '0';
 const keep = Math.max(1, parseInt(q.get('lines') || '2', 10));
 document.documentElement.style.setProperty('--scale', q.get('size') || '1');
 const align = q.get('align');
@@ -70,11 +72,14 @@ function cap(en, th, cls) {
 function render() {
   lines.replaceChildren();
   const n = keepPrev ? keep : Math.max(0, keep - (interim ? 1 : 0));
-  (n ? finals.slice(-n) : []).forEach((f, i, a) => lines.append(cap(f.en, f.th, i < a.length - 1 || interim ? 'old' : '')));
+  (n ? finals.slice(-n) : []).forEach((f, i, a) => {
+    const cls = i < a.length - 1 || interim ? 'old' : '';
+    lines.append(showOrig ? cap(f.en, f.th, cls) : cap('', f.tr || f.src, cls));  // no translation: show what was said
+  });
   if (interim) {                // Thai always large, English small, whichever was spoken
     const th = interim.lang === 'th' ? interim.src : (interim.tr || '…');
     const en = interim.lang === 'th' ? interim.tr : interim.src;
-    lines.append(cap(en, th, 'interim'));
+    lines.append(showOrig ? cap(en, th, 'interim') : cap('', interim.tr || '…', 'interim'));
   }
 }
 function connect() {
@@ -87,7 +92,7 @@ function connect() {
       interim = { id: d.id, lang: d.lang, src: d.src, tr: same ? interim.tr : '' };
     }
     else if (d.type === 'interim_tr') { if (interim && interim.id === d.id && interim.lang === d.lang) interim.tr = d.tr; }
-    else if (d.type === 'final') { finals.push({ en: d.en, th: d.th }); if (finals.length > 20) finals.shift();
+    else if (d.type === 'final') { finals.push({ en: d.en, th: d.th, src: d.src, tr: d.tr }); if (finals.length > 20) finals.shift();
                                     if (interim && interim.id <= d.id) interim = null; }
     render();
   };
