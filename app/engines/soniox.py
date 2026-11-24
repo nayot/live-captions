@@ -23,7 +23,7 @@ RESUME_BACKLOG_CHUNKS = 20  # ~2 s of 100 ms chunks kept while reconnecting
 MARKERS = {"<end>", "<fin>"}
 # Speakers who don't pause would otherwise produce one endless line (endpoints come only at pauses).
 # Once a line reaches max_chars we end it at the next word or sentence boundary; at 1.5x we end it anyway.
-DEFAULT_MAX_CHARS = 80
+DEFAULT_MAX_CHARS = 50
 SENTENCE_END = (".", "?", "!", "。")
 
 

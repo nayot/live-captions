@@ -61,7 +61,7 @@ class Settings:
     speaker_gender: str = ""
     soniox_api_key: str = ""
     soniox_model: str = ""
-    max_line_chars: int = 80
+    max_line_chars: int = 50
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -87,5 +87,5 @@ class Settings:
             speaker_gender=e("SPEAKER_GENDER", ""),
             soniox_api_key=e("SONIOX_API_KEY", ""),
             soniox_model=e("SONIOX_MODEL", ""),
-            max_line_chars=int(e("MAX_LINE_CHARS", "80")),
+            max_line_chars=int(e("MAX_LINE_CHARS", "50")),
         )

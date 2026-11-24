@@ -39,6 +39,7 @@
 const q = new URLSearchParams(location.search);
 const showEn = q.get('en') !== '0';
 const showOrig = q.get('orig') !== '0';
+const showDraft = q.get('draft') === '1';  // default: only finished lines, never rewritten
 const keep = Math.max(1, parseInt(q.get('lines') || '2', 10));
 document.documentElement.style.setProperty('--scale', q.get('size') || '1');
 const align = q.get('align');
@@ -71,15 +72,18 @@ function cap(en, th, cls) {
 }
 function render() {
   lines.replaceChildren();
-  const n = keepPrev ? keep : Math.max(0, keep - (interim ? 1 : 0));
+  // Show the line being spoken only once its large line has text (no "…" placeholder while translating);
+  // until then the previous lines stay on screen.
+  const big = !interim ? '' : !showOrig ? interim.tr : interim.lang === 'th' ? interim.src : interim.tr;
+  const live = showDraft && big ? interim : null;
+  const n = keepPrev ? keep : Math.max(0, keep - (live ? 1 : 0));
   (n ? finals.slice(-n) : []).forEach((f, i, a) => {
-    const cls = i < a.length - 1 || interim ? 'old' : '';
+    const cls = i < a.length - 1 || live ? 'old' : '';
     lines.append(showOrig ? cap(f.en, f.th, cls) : cap('', f.tr || f.src, cls));  // no translation: show what was said
   });
-  if (interim) {                // Thai always large, English small, whichever was spoken
-    const th = interim.lang === 'th' ? interim.src : (interim.tr || '…');
-    const en = interim.lang === 'th' ? interim.tr : interim.src;
-    lines.append(showOrig ? cap(en, th, 'interim') : cap('', interim.tr || '…', 'interim'));
+  if (live) {                   // Thai always large, English small, whichever was spoken
+    const en = live.lang === 'th' ? live.tr : live.src;
+    lines.append(showOrig ? cap(en, big, 'interim') : cap('', big, 'interim'));
   }
 }
 function connect() {
