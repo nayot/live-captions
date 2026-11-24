@@ -63,7 +63,7 @@
   <section>
     <h2>3. Type a line (test / manual fallback)</h2>
     <div class="row">
-      <input type="text" id="itext" placeholder="Type English and press Enter">
+      <input type="text" id="itext" placeholder="Type English or Thai and press Enter">
     </div>
   </section>
 
@@ -245,11 +245,11 @@ function feed() {
   const ev = new WebSocket(`ws://${location.host}/ws/events`);
   ev.onmessage = m => {
     const d = JSON.parse(m.data);
-    if (d.type === 'interim' || d.type === 'final_en') {
+    if (d.type === 'interim' || d.type === 'final_src') {
       if (d.id !== interimId) { interimId = d.id; $('interim_th').textContent = ''; }
-      $('interim_en').textContent = '… ' + d.en;
+      $('interim_en').textContent = `… [${d.lang.toUpperCase()}] ` + d.src;
     }
-    if (d.type === 'interim_th' && d.id === interimId) $('interim_th').textContent = '… ' + d.th;
+    if (d.type === 'interim_tr' && d.id === interimId) $('interim_th').textContent = '… ' + d.tr;
     if (d.type === 'final') {
       if (d.id >= interimId) { $('interim_en').textContent = ''; $('interim_th').textContent = ''; }
       const el = document.createElement('div');

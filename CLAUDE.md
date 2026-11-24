@@ -1,6 +1,6 @@
 # CLAUDE.md — live-captions
 
-Live English → Thai captions: room audio → speech-to-text → translation → Zoom closed captions
+Live English ↔ Thai captions: room audio → speech-to-text → translation → Zoom closed captions
 (third-party caption API) + a second-screen display page. See `PLAN.md` for scope, phases and open decisions.
 
 ## Rules for this repo (public)
@@ -20,7 +20,7 @@ Live English → Thai captions: room audio → speech-to-text → translation �
 
 ```
 app/            FastAPI server: websocket audio in, broadcaster, Zoom poster
-app/engines/    base.py (interfaces), stub.py, assemblyai.py (STT), openrouter.py (translation), google.py (both)
+app/engines/    base.py (interfaces, detect_lang), stub.py, assemblyai.py (STT, English only), soniox.py (STT, EN+TH), openrouter.py (translation), google.py (both)
 app/static/     control.html (/), display.html (/display); bar overlay later
 config/         glossary.yaml, settings
 scripts/        zoom_probe.py (one-off caption API test)
@@ -61,3 +61,8 @@ uv run python scripts/zoom_probe.py   # Phase 1: post test lines to a live meeti
   colour). `SPEAKER_GENDER=male|female` sets ครับ/ผม or ค่ะ/ดิฉัน in the translation. GEA seminar terms added
   (standards in `glossary.yaml`; names/companies in the git-ignored `glossary.local.yaml` on the MacBook).
   STT keyterms are capped at 100 (base list first) — currently 92.
+- 24.11.2026 (branch `dev`) — Two-way: each line's language is detected from its script (Thai letters → th);
+  English → Thai, Thai → English. Display keeps Thai large / English small; Zoom still gets the Thai line.
+  AssemblyAI streaming can't do Thai (tested: rejects `th`, garbles Thai), so **Soniox** (`STT_ENGINE=soniox`,
+  `stt-rt-v6`, USD 0.12/h, EN+TH in one stream) was added. TH→EN translation tested live; **Soniox not yet
+  tested live** (no key yet). Thai token spacing from Soniox is unverified.

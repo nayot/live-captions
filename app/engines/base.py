@@ -28,6 +28,15 @@ class SttEngine(Protocol):
 
 
 class Translator(Protocol):
+    """Translates a line from `source` ("en" or "th") into the other language."""
+
     name: str
 
-    async def translate(self, text: str, final: bool = True) -> str: ...
+    async def translate(self, text: str, final: bool = True, source: str = "en") -> str: ...
+
+
+def detect_lang(text: str) -> str:
+    """'th' if most letters are Thai script, else 'en'. English terms inside Thai speech stay 'th'."""
+    thai = sum(1 for c in text if "\u0e00" <= c <= "\u0e7f")
+    latin = sum(1 for c in text if c.isascii() and c.isalpha())
+    return "th" if thai and thai >= latin else "en"

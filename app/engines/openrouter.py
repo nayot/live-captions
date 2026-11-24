@@ -24,6 +24,17 @@ Rules:
 - The transcript may contain recognition errors; translate the most likely intended meaning.
 - If the line is only filler ("um", "okay so"), output it briefly in Thai or leave it nearly empty.{speaker}"""
 
+SYSTEM_TH_EN = """You translate live speech transcripts from Thai into English for on-screen captions at an
+engineering seminar (electronics manufacturing, PCB/PCBA, semiconductors, sustainability).
+Rules:
+- Output only the English translation of the CURRENT line. No quotes, notes or explanations.
+- Natural, concise English that is easy to read quickly. Keep it about as short as the source.
+- Thai speakers often say technical terms in English; keep them as they are: {keep}.
+- Write person names and company names in their usual English spelling; keep standards (e.g. IPC-A-610) as written.
+- Drop Thai polite particles (ครับ, ค่ะ, นะครับ) unless they carry meaning.
+- The transcript may contain recognition errors; translate the most likely intended meaning.
+- If the line is only filler, output it briefly or leave it nearly empty."""
+
 SPEAKER = {
     "male": "\n- The speaker is male: when Thai needs a polite particle or first-person pronoun, use ครับ and ผม.",
     "female": "\n- The speaker is female: when Thai needs a polite particle or first-person pronoun, use ค่ะ/คะ and ดิฉัน.",
@@ -43,6 +54,7 @@ class OpenRouterTranslator:
         self.name = f"openrouter:{model}"
         self._system = SYSTEM.format(keep=", ".join(keep) if keep else "(none)",
                                      speaker=SPEAKER.get(speaker.strip().lower(), ""))
+        self._system_th = SYSTEM_TH_EN.format(keep=", ".join(keep) if keep else "(none)")
         self._ctx: deque[str] = deque(maxlen=context_lines)
         self._client = client or httpx.AsyncClient(timeout=8.0)
         self._headers = {
@@ -50,7 +62,7 @@ class OpenRouterTranslator:
             "X-Title": "live-captions",
         }
 
-    async def translate(self, text: str, final: bool = True) -> str:
+    async def translate(self, text: str, final: bool = True, source: str = "en") -> str:
         context = "\n".join(self._ctx)
         user = (f"Previous lines (context only, do not translate):\n{context}\n\n" if context else "") + \
                f"CURRENT line to translate:\n{text}"
@@ -58,7 +70,8 @@ class OpenRouterTranslator:
             "model": self.model,
             "temperature": 0.2,
             "max_tokens": 400,
-            "messages": [{"role": "system", "content": self._system}, {"role": "user", "content": user}],
+            "messages": [{"role": "system", "content": self._system_th if source == "th" else self._system},
+                         {"role": "user", "content": user}],
         })
         if r.status_code >= 300:
             raise RuntimeError(f"OpenRouter HTTP {r.status_code}: {r.text[:160]}")

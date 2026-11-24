@@ -122,14 +122,15 @@ class GoogleTranslator:
             t = self._keep_re.sub(r'<span translate="no">\1</span>', t)
         return t
 
-    async def translate(self, text: str, final: bool = True) -> str:
+    async def translate(self, text: str, final: bool = True, source: str = "en") -> str:
+        src, tgt = ("th", "en") if source == "th" else (self._source, self._target)
         resp = await self._client.translate_text(
             request={
                 "parent": self._parent,
                 "contents": [self._protect(text)],
                 "mime_type": "text/html",
-                "source_language_code": self._source,
-                "target_language_code": self._target,
+                "source_language_code": src,
+                "target_language_code": tgt,
             }
         )
         out = resp.translations[0].translated_text

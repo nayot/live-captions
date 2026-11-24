@@ -128,3 +128,45 @@ def test_lan_clients_get_display_only():
         assert c.post("/api/zoom", json={"url": "https://x"}).status_code == 403
     with TestClient(app) as c:
         assert c.get("/").status_code == 200
+
+
+def test_detect_lang():
+    from app.engines.base import detect_lang
+    assert detect_lang("Hello everyone") == "en"
+    assert detect_lang("สวัสดีครับ วันนี้จะพูดเรื่อง IPC-A-610") == "th"   # English terms inside Thai stay Thai
+    assert detect_lang("We follow มาตรฐาน IPC Class 3 for medical devices") == "en"
+
+
+def test_thai_speech_is_translated_to_english():
+    app = create_app(settings())
+    with TestClient(app) as c:
+        with c.websocket_connect("/ws/events") as ws:
+            c.post("/api/inject", json={"text": "สวัสดีครับ"})
+            c.post("/api/inject", json={"text": "Hello everyone"})
+            finals = []
+            while len(finals) < 2:
+                d = json.loads(ws.receive_text())
+                if d["type"] == "final":
+                    finals.append(d)
+    th_line, en_line = finals
+    assert th_line["lang"] == "th" and th_line["th"] == "สวัสดีครับ" and th_line["en"] == "[EN] สวัสดีครับ"
+    assert en_line["lang"] == "en" and en_line["en"] == "Hello everyone" and en_line["th"].startswith("[TH]")
+
+
+def test_soniox_tokens_become_lines():
+    from app.engines.soniox import SonioxSession
+
+    async def run():
+        s = SonioxSession.__new__(SonioxSession)  # no network: feed messages straight to the parser
+        s._out, s._final, s._last_interim = asyncio.Queue(), "", ""
+        await s.handle({"tokens": [{"text": "สวัส", "is_final": True}, {"text": "ดีครับ", "is_final": False}]})
+        await s.handle({"tokens": [{"text": "ดี", "is_final": True}, {"text": "ครับ", "is_final": True},
+                                   {"text": "<end>", "is_final": True}, {"text": " Hello", "is_final": False}]})
+        await s.handle({"tokens": [], "error_code": 503, "error_type": "service_unavailable"})
+        out = []
+        while not s._out.empty():
+            r = s._out.get_nowait()
+            out.append((r.text, r.final))
+        return out
+
+    assert asyncio.run(run()) == [("สวัสดีครับ", False), ("สวัสดีครับ", True), ("Hello", False)]

@@ -58,7 +58,7 @@ const fg = FG[q.get('fg')] || (/^[0-9a-f]{6}$/i.test(q.get('fg') || '') ? '#' + 
 if (fg) { document.documentElement.style.setProperty('--fg', fg); document.documentElement.style.setProperty('--fg-interim', fg); }
 const lines = document.getElementById('lines');
 const finals = [];          // {en, th}
-let interim = null;         // {id, en, th}
+let interim = null;         // {id, lang, src, tr}: what is being said now, and its draft translation
 
 function cap(en, th, cls) {
   const d = document.createElement('div');
@@ -71,16 +71,22 @@ function render() {
   lines.replaceChildren();
   const n = keepPrev ? keep : Math.max(0, keep - (interim ? 1 : 0));
   (n ? finals.slice(-n) : []).forEach((f, i, a) => lines.append(cap(f.en, f.th, i < a.length - 1 || interim ? 'old' : '')));
-  if (interim) lines.append(cap(interim.en, interim.th || '…', 'interim'));
+  if (interim) {                // Thai always large, English small, whichever was spoken
+    const th = interim.lang === 'th' ? interim.src : (interim.tr || '…');
+    const en = interim.lang === 'th' ? interim.tr : interim.src;
+    lines.append(cap(en, th, 'interim'));
+  }
 }
 function connect() {
   const ws = new WebSocket(`ws://${location.host}/ws/events`);
   ws.onopen = () => document.getElementById('dot').classList.add('on');
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
-    if (d.type === 'interim') { interim = { id: d.id, en: d.en, th: interim && interim.id === d.id ? interim.th : '' }; }
-    else if (d.type === 'interim_th') { if (interim && interim.id === d.id) interim.th = d.th; }
-    else if (d.type === 'final_en') { interim = { id: d.id, en: d.en, th: interim && interim.id === d.id ? interim.th : '' }; }
+    if (d.type === 'interim' || d.type === 'final_src') {
+      const same = interim && interim.id === d.id && interim.lang === d.lang;
+      interim = { id: d.id, lang: d.lang, src: d.src, tr: same ? interim.tr : '' };
+    }
+    else if (d.type === 'interim_tr') { if (interim && interim.id === d.id && interim.lang === d.lang) interim.tr = d.tr; }
     else if (d.type === 'final') { finals.push({ en: d.en, th: d.th }); if (finals.length > 20) finals.shift();
                                     if (interim && interim.id <= d.id) interim = null; }
     render();

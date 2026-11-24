@@ -39,6 +39,10 @@ def build_engines(s: Settings):
         from .engines.assemblyai import AssemblyAIStt
 
         stt = AssemblyAIStt(s.assemblyai_api_key, s.glossary.phrases, s.stt_model)
+    elif s.stt_engine == "soniox":
+        from .engines.soniox import SonioxStt
+
+        stt = SonioxStt(s.soniox_api_key, s.glossary.phrases, s.soniox_model)
     else:
         stt = StubStt()
     if s.translate_engine == "google":
