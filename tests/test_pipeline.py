@@ -158,7 +158,7 @@ def test_soniox_tokens_become_lines():
 
     async def run():
         s = SonioxSession.__new__(SonioxSession)  # no network: feed messages straight to the parser
-        s._out, s._final, s._last_interim = asyncio.Queue(), "", ""
+        s._out, s._final, s._last_interim, s._max = asyncio.Queue(), "", "", 80
         await s.handle({"tokens": [{"text": "สวัส", "is_final": True}, {"text": "ดีครับ", "is_final": False}]})
         await s.handle({"tokens": [{"text": "ดี", "is_final": True}, {"text": "ครับ", "is_final": True},
                                    {"text": "<end>", "is_final": True}, {"text": " Hello", "is_final": False}]})
@@ -170,3 +170,23 @@ def test_soniox_tokens_become_lines():
         return out
 
     assert asyncio.run(run()) == [("สวัสดีครับ", False), ("สวัสดีครับ", True), ("Hello", False)]
+
+
+def test_soniox_breaks_long_lines_at_word_boundaries():
+    from app.engines.soniox import SonioxSession
+
+    async def run():
+        s = SonioxSession.__new__(SonioxSession)
+        s._out, s._final, s._last_interim, s._max = asyncio.Queue(), "", "", 20
+        words = ["อ่า", " ก็เพราะว่า", "อะไร", " เพราะว่า", "ไอ้ส่วน", "นั้นน่ะ", " แก๊ส", "แค่ตัวเดียว", "นี่แหละ"]
+        await s.handle({"tokens": [{"text": w, "is_final": True} for w in words] + [{"text": "<end>", "is_final": True}]})
+        out = []
+        while not s._out.empty():
+            r = s._out.get_nowait()
+            if r.final:
+                out.append(r.text)
+        return out
+
+    lines = asyncio.run(run())
+    assert len(lines) > 1 and "".join(lines).replace(" ", "") == "อ่าก็เพราะว่าอะไรเพราะว่าไอ้ส่วนนั้นน่ะแก๊สแค่ตัวเดียวนี่แหละ"
+    assert all(len(x) <= 30 + 11 for x in lines)   # 1.5 x 20, plus at most one more token

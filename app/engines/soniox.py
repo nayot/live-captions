@@ -21,11 +21,17 @@ DEFAULT_MODEL = "stt-rt-v6"
 RETRY_DELAYS_S = (0.0, 0.5, 1, 2, 5, 10)
 RESUME_BACKLOG_CHUNKS = 20  # ~2 s of 100 ms chunks kept while reconnecting
 MARKERS = {"<end>", "<fin>"}
+# Speakers who don't pause would otherwise produce one endless line (endpoints come only at pauses).
+# Once a line reaches max_chars we end it at the next word or sentence boundary; at 1.5x we end it anyway.
+DEFAULT_MAX_CHARS = 80
+SENTENCE_END = (".", "?", "!", "。")
 
 
 class SonioxSession:
-    def __init__(self, api_key: str, terms: list[str], model: str = "", languages: list[str] | None = None) -> None:
+    def __init__(self, api_key: str, terms: list[str], model: str = "", languages: list[str] | None = None,
+                 max_chars: int = DEFAULT_MAX_CHARS) -> None:
         self._key = api_key
+        self._max = max_chars
         self._config = {
             "model": model or DEFAULT_MODEL,
             "audio_format": "pcm_s16le",
@@ -84,6 +90,8 @@ class SonioxSession:
                 if text == "<end>":
                     await self._flush()
                 elif text not in MARKERS:
+                    if self._should_break(text):
+                        await self._flush()
                     self._final += text
             elif text not in MARKERS:
                 nonfinal += text
@@ -91,6 +99,14 @@ class SonioxSession:
         if interim and interim != self._last_interim:
             self._last_interim = interim
             await self._out.put(SttResult(interim, False))
+
+    def _should_break(self, next_text: str) -> bool:
+        """End the current line before `next_text`? Only at a boundary unless the line is far too long."""
+        n = len(self._final.strip())
+        if not self._max or n < self._max:
+            return False
+        boundary = next_text[:1].isspace() or self._final.rstrip().endswith(SENTENCE_END + (",",))
+        return boundary or n >= self._max * 1.5
 
     async def _run(self) -> None:
         from websockets.asyncio.client import connect
@@ -148,11 +164,12 @@ class SonioxSession:
 class SonioxStt:
     name = "soniox"
 
-    def __init__(self, api_key: str, terms: list[str], model: str = "") -> None:
+    def __init__(self, api_key: str, terms: list[str], model: str = "", max_chars: int = DEFAULT_MAX_CHARS) -> None:
         if not api_key:
             raise SystemExit("SONIOX_API_KEY is required for STT_ENGINE=soniox")
         self._key, self._terms, self._model = api_key, terms, model or DEFAULT_MODEL
+        self._max_chars = max_chars
         self.name = f"soniox:{self._model}"
 
     async def open(self) -> SonioxSession:
-        return SonioxSession(self._key, self._terms, self._model)
+        return SonioxSession(self._key, self._terms, self._model, max_chars=self._max_chars)

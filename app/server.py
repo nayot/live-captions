@@ -42,7 +42,7 @@ def build_engines(s: Settings):
     elif s.stt_engine == "soniox":
         from .engines.soniox import SonioxStt
 
-        stt = SonioxStt(s.soniox_api_key, s.glossary.phrases, s.soniox_model)
+        stt = SonioxStt(s.soniox_api_key, s.glossary.phrases, s.soniox_model, s.max_line_chars)
     else:
         stt = StubStt()
     if s.translate_engine == "google":
