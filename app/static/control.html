@@ -45,6 +45,7 @@
       <div class="meter"><div id="lvl"></div></div>
       <span id="astat">idle</span>
       <span id="rec" class="bad" style="font-weight:600"></span>
+      <span id="tdl" style="display:none">transcript: <a href="/api/transcript.txt">.txt</a> · <a href="/api/transcript.srt">.srt</a></span>
     </div>
   </section>
 
@@ -243,6 +244,7 @@ async function poll() {
       `  sent: ${z.posted}  next seq: ${z.seq}  last HTTP: ${z.last_status ?? '-'} ${z.last_error || ''}` +
       (s.recording && s.recording.enabled ? `\nrecording: ${s.recording.recording ? s.recording.file : 'off (starts with Start listening)'}` : '\nrecording: disabled (RECORD_DIR empty)');
     const r = s.recording || {};
+    $('tdl').style.display = r.transcript_lines ? '' : 'none';
     $('rec').textContent = r.recording ? `● REC ${Math.floor(r.seconds / 60)}:${String(r.seconds % 60).padStart(2, '0')}` : '';
     zoomBadge(z);
   } catch (e) { $('status').innerHTML = '<span class="bad">server not reachable — is "uv run python -m app" still running?</span>'; zoomBadge(null); $('rec').textContent = ''; }

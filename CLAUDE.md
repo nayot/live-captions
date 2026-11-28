@@ -69,3 +69,7 @@ uv run python scripts/zoom_probe.py   # Phase 1: post test lines to a live meeti
 - 28.11.2026 — Audio recording: one WAV per Start…Stop in `recordings/` (`RECORD_DIR`, git-ignored; ~115 MB/h).
   Reconnects with the same browser session id append to the same file; header rewritten every 2 s, so a killed
   server still leaves a playable file (tested: Ctrl-C and SIGKILL). REC timer on the control page.
+- 28.11.2026 — Transcript per listening session next to the WAV: `.txt` (wall-clock time, EN/TH) and `.srt`
+  (timed to the recording position, so gaps from reconnects stay aligned). Download links on the control page
+  (`/api/transcript.txt|srt`, local only). Unit-tested; **live run pending** (this workstation's `.env` was found
+  reset to the template at 15:54, no keys — keys are in Bitwarden item `live-caption`).

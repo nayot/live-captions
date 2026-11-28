@@ -62,6 +62,10 @@ class Pipeline:
         self._interim_task: asyncio.Task | None = None
         self._worker: asyncio.Task | None = None
         self._log_path = None
+        # Optional transcript sink (the server wires in the per-recording .txt/.srt writer)
+        self.position = lambda: None                      # -> seconds into the current recording, or None
+        self.on_line = lambda start, lang, en, th: None   # called once per finished, translated line
+        self._starts: dict[int, float | None] = {}
         if transcript_dir:
             d = Path(transcript_dir)
             d.mkdir(parents=True, exist_ok=True)
@@ -75,6 +79,7 @@ class Pipeline:
     async def on_stt(self, r: SttResult) -> None:
         if not r.text:
             return
+        self._starts.setdefault(self.utterance, self.position())
         if r.final:
             uid = self.utterance
             self.utterance += 1
@@ -119,6 +124,10 @@ class Pipeline:
             await self.bus.send({"type": "final", "id": uid, "lang": lang, "src": src, "tr": tr,
                                  "en": en, "th": th}, keep=True)
             self.zoom.enqueue(th or en)  # Zoom gets the Thai line: the translation, or what a Thai speaker said
+            try:
+                self.on_line(self._starts.pop(uid, None), lang, en, th)
+            except Exception as e:  # saving text must never stop the captions
+                log.warning("transcript save failed: %s", e)
             if self._log_path:
                 with self._log_path.open("a", encoding="utf-8") as f:
                     f.write(f"{datetime.now():%H:%M:%S}\t{lang}\t{en}\t{th}\n")

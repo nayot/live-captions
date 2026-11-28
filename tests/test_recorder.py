@@ -62,3 +62,25 @@ def test_disabled_when_dir_empty(tmp_path):
     with TestClient(app) as client:
         _stream(client, "x", 2, 1000)
         assert client.get("/api/status").json()["recording"]["enabled"] is False
+
+
+def test_transcript_saved_per_session(tmp_path):
+    rec_dir = tmp_path / "rec"
+    app = create_app(settings(record_dir=str(rec_dir)))
+    with TestClient(app) as client:
+        assert client.get("/api/transcript.txt").status_code == 404  # nothing yet
+        with client.websocket_connect("/ws/audio?sid=t1") as ws:
+            for _ in range(20):
+                ws.send_bytes(PCM)
+            client.post("/api/inject", json={"text": "Our goal is Net Zero by 2050.", "final": True})
+            client.post("/api/inject", json={"text": "สวัสดีครับ", "final": True})
+            for _ in range(3):
+                if client.get("/api/status").json()["recording"]["transcript_lines"] == 2:
+                    break
+                import time; time.sleep(0.2)
+            ws.close(1000)
+        txt = client.get("/api/transcript.txt").text
+        srt = client.get("/api/transcript.srt").text
+    assert "EN: Our goal is Net Zero by 2050." in txt and "TH: สวัสดีครับ" in txt
+    assert srt.startswith("1\n00:00:0") and "\n2\n" in srt
+    assert sorted(p.suffix for p in rec_dir.iterdir()) == [".srt", ".txt", ".wav"]

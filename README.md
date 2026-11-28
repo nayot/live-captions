@@ -43,7 +43,10 @@ only, and the changing draft while speaking (off by default: lines appear once, 
 Each **Start listening** records the room audio to `recordings/recording-YYYYMMDD-HHMMSS.wav` until **Stop**
 or until the server shuts down; a short network drop continues the same file. The file stays playable even if
 the server is killed. About 115 MB per hour (16 kHz mono). Set `RECORD_DIR=` (empty) in `.env` to turn it off.
-The English/Thai text log goes to `transcripts/`. Both folders are git-ignored.
+Next to each recording, the text is saved as it is spoken: a readable `.txt` (time of day, English and Thai)
+and an `.srt` subtitle file timed to the recording, so the WAV plays back with captions. The control page
+has download links for the current session. A running log of all lines also goes to `transcripts/`.
+Both folders are git-ignored.
 
 ## Windows
 

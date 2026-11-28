@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from .config import Settings
@@ -107,6 +107,7 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
     pipe = Pipeline(translator, zoom, s.transcript_dir)
     state = {"audio_clients": 0, "audio_bytes": 0}
     recordings = Recordings(s.record_dir)
+    pipe.position, pipe.on_line = recordings.position, recordings.add_line
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -197,6 +198,16 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
     async def zoom_test():
         zoom.enqueue("ทดสอบคำบรรยาย (caption test)")
         return {"ok": True}
+
+    @app.get("/api/transcript.{ext}")
+    async def transcript(ext: str):
+        """The current (or last) listening session's transcript, as .txt or .srt."""
+        t = recordings.last_text
+        path = {"txt": t.txt, "srt": t.srt}.get(ext) if t else None
+        if not path or not path.exists():
+            return Response("No transcript yet: press Start listening first.", status_code=404,
+                            media_type="text/plain; charset=utf-8")
+        return FileResponse(path, filename=path.name, media_type="text/plain; charset=utf-8")
 
     @app.get("/api/status")
     async def status():

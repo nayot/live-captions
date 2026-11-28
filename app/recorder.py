@@ -75,6 +75,41 @@ class WavRecorder:
         log.info("Recording saved: %s (%.0f s)", self.path, self.seconds)
 
 
+def _srt_time(t: float) -> str:
+    ms = int(round(max(0.0, t) * 1000))
+    h, ms = divmod(ms, 3_600_000)
+    m, ms = divmod(ms, 60_000)
+    s, ms = divmod(ms, 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+class SessionText:
+    """Transcript of one listening session, saved next to its recording as .txt (readable) and .srt
+    (subtitles timed to the WAV). Each line is appended and flushed as it is finalised."""
+
+    def __init__(self, wav_path: Path) -> None:
+        self.txt, self.srt = wav_path.with_suffix(".txt"), wav_path.with_suffix(".srt")
+        self.lines = 0
+        if not self.txt.exists():
+            with self.txt.open("w", encoding="utf-8") as f:
+                f.write(f"Transcript — {wav_path.name}\nStarted {datetime.now():%d.%m.%Y %H:%M:%S}\n\n")
+
+    def add(self, start: float, end: float, lang: str, en: str, th: str) -> None:
+        first, second = (("TH", th), ("EN", en)) if lang == "th" else (("EN", en), ("TH", th))
+        with self.txt.open("a", encoding="utf-8") as f:
+            f.write(f"[{datetime.now():%H:%M:%S}] {first[0]}: {first[1]}\n")
+            if second[1]:
+                f.write(f"           {second[0]}: {second[1]}\n")
+            f.write("\n")
+        end = max(end, start + 1.5)  # keep very short lines readable
+        self.lines += 1
+        with self.srt.open("a", encoding="utf-8") as f:
+            f.write(f"{self.lines}\n{_srt_time(start)} --> {_srt_time(end)}\n{th or en}\n")
+            if th and en:
+                f.write(f"{en}\n")
+            f.write("\n")
+
+
 class Recordings:
     """Keeps one recorder per browser listening session; a reconnect with the same id appends."""
 
@@ -83,6 +118,10 @@ class Recordings:
         self._open: dict[str, WavRecorder] = {}
         self._clients: dict[str, int] = {}
         self._names: dict[str, Path] = {}
+        self._text: dict[str, SessionText] = {}
+        self._pos: dict[str, float] = {}   # last known recording position per session (kept across gaps)
+        self._current = ""                 # session that receives transcript lines
+        self.last_text: SessionText | None = None
 
     @property
     def enabled(self) -> bool:
@@ -99,8 +138,12 @@ class Recordings:
             self._names[sid] = path
             rec = WavRecorder(path)
             self._open[sid] = rec
+            if sid not in self._text:
+                self._text[sid] = SessionText(path)
+            self.last_text = self._text[sid]
             log.info("Recording to %s", path)
         self._clients[sid] = self._clients.get(sid, 0) + 1
+        self._current = sid
         return rec
 
     def _new_path(self) -> Path:
@@ -115,16 +158,40 @@ class Recordings:
         sid = re.sub(r"[^A-Za-z0-9_-]", "", session_id)[:40] or "anon"
         self._clients[sid] = max(0, self._clients.get(sid, 1) - 1)
         if self._clients[sid] == 0 and (rec := self._open.pop(sid, None)):
+            self._pos[sid] = rec.seconds
             rec.close()
         if final:
             self._names.pop(sid, None)
+            self._text.pop(sid, None)
+            self._pos.pop(sid, None)
+            if self._current == sid:
+                self._current = ""
+
+    # --- transcript hooks (called by the pipeline) ---------------------------------------------
+    def position(self) -> float | None:
+        """Seconds into the current recording, or None when no listening session is running."""
+        sid = self._current
+        if sid not in self._text:
+            return None
+        rec = self._open.get(sid)
+        return rec.seconds if rec else self._pos.get(sid, 0.0)
+
+    def add_line(self, start: float | None, lang: str, en: str, th: str) -> None:
+        text = self._text.get(self._current)
+        if text is None:
+            return
+        end = self.position() or 0.0
+        text.add(start if start is not None else max(0.0, end - 3), end, lang, en, th)
 
     def close_all(self) -> None:
         for sid, rec in list(self._open.items()):
             rec.close()
         self._open.clear()
+        self._text.clear()
+        self._current = ""
 
     def status(self) -> dict:
         recs = list(self._open.values())
         return {"enabled": self.enabled, "recording": bool(recs),
+                "transcript_lines": self.last_text.lines if self.last_text else 0,
                 "file": recs[-1].path.name if recs else "", "seconds": round(recs[-1].seconds) if recs else 0}
