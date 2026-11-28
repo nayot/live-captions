@@ -13,6 +13,7 @@ token*.txt
 logs/
 *.log
 transcripts/
+recordings/
 __pycache__/
 *.pyc
 .venv/

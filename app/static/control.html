@@ -44,6 +44,7 @@
       <button id="stop" disabled>Stop</button>
       <div class="meter"><div id="lvl"></div></div>
       <span id="astat">idle</span>
+      <span id="rec" class="bad" style="font-weight:600"></span>
     </div>
   </section>
 
@@ -101,7 +102,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-let ctx, stream, node, ws;
+let ctx, stream, node, ws, recSid = "";
 
 // AudioWorklet: downmix + resample to 16 kHz Int16, ~100 ms chunks
 const workletSrc = `
@@ -134,6 +135,7 @@ async function listDevices() {
 }
 
 async function start() {
+  recSid = Date.now().toString(36);
   stream = await navigator.mediaDevices.getUserMedia({
     audio: { deviceId: $('dev').value ? { exact: $('dev').value } : undefined,
              echoCancellation: false, noiseSuppression: false, autoGainControl: false }
@@ -151,7 +153,8 @@ async function start() {
 }
 
 function openAudioSocket() {
-  ws = new WebSocket(`ws://${location.host}/ws/audio`);
+  // recSid ties reconnects to the same recording file; a new Start makes a new file.
+  ws = new WebSocket(`ws://${location.host}/ws/audio?sid=${recSid}`);
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => { $('astat').textContent = 'listening'; audioButtons('on'); };
   ws.onclose = () => { if (!node) return; $('astat').textContent = 'reconnecting…'; audioButtons('reconnecting'); setTimeout(openAudioSocket, 300); };
@@ -159,7 +162,7 @@ function openAudioSocket() {
 
 function stop() {
   const n = node; node = null;
-  if (ws) ws.close(); if (stream) stream.getTracks().forEach(t => t.stop()); if (ctx) ctx.close();
+  if (ws) ws.close(1000, 'stop'); if (stream) stream.getTracks().forEach(t => t.stop()); if (ctx) ctx.close();
   if (n) n.port.onmessage = null;
   $('start').disabled = false; $('stop').disabled = true; $('astat').textContent = 'idle'; $('lvl').style.width = 0;
   audioButtons('off');
@@ -237,9 +240,12 @@ async function poll() {
       `audio clients: ${s.audio_clients}  received: ${(s.audio_bytes / 32000).toFixed(0)} s of audio\n` +
       `display pages: ${s.display_clients}  lines: ${s.finals}  translate errors: ${s.translate_errors}\n` +
       `zoom: ${z.enabled ? '<span class="ok">connected</span>' : '<span class="bad">not connected</span>'}` +
-      `  sent: ${z.posted}  next seq: ${z.seq}  last HTTP: ${z.last_status ?? '-'} ${z.last_error || ''}`;
+      `  sent: ${z.posted}  next seq: ${z.seq}  last HTTP: ${z.last_status ?? '-'} ${z.last_error || ''}` +
+      (s.recording && s.recording.enabled ? `\nrecording: ${s.recording.recording ? s.recording.file : 'off (starts with Start listening)'}` : '\nrecording: disabled (RECORD_DIR empty)');
+    const r = s.recording || {};
+    $('rec').textContent = r.recording ? `● REC ${Math.floor(r.seconds / 60)}:${String(r.seconds % 60).padStart(2, '0')}` : '';
     zoomBadge(z);
-  } catch (e) { $('status').innerHTML = '<span class="bad">server not reachable — is "uv run python -m app" still running?</span>'; zoomBadge(null); }
+  } catch (e) { $('status').innerHTML = '<span class="bad">server not reachable — is "uv run python -m app" still running?</span>'; zoomBadge(null); $('rec').textContent = ''; }
 }
 setInterval(poll, 1500); poll();
 

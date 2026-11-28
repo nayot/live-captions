@@ -14,6 +14,7 @@ from .config import Settings
 from .engines.stub import StubStt, StubTranslator
 from .engines.base import SttResult
 from .pipeline import Pipeline
+from .recorder import Recordings
 from .zoom import ZoomPoster
 
 log = logging.getLogger("live_captions")
@@ -105,12 +106,16 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
         zoom.set_url(s.zoom_cc_url)
     pipe = Pipeline(translator, zoom, s.transcript_dir)
     state = {"audio_clients": 0, "audio_bytes": 0}
+    recordings = Recordings(s.record_dir)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         pipe.start()
-        yield
-        await zoom.stop()
+        try:
+            yield
+        finally:
+            recordings.close_all()  # server shutdown: finalise any recording still open
+            await zoom.stop()
 
     app = FastAPI(title="live-captions", lifespan=lifespan)
     app.add_middleware(LanDisplayOnly)
@@ -146,6 +151,9 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
         await ws.accept()
         session = await stt.open()
         state["audio_clients"] += 1
+        sid = ws.query_params.get("sid", "")
+        rec = recordings.attach(sid)
+        final = True  # Stop pressed or server going down, unless we see a dropped connection
 
         async def pump():
             async for r in session.results():
@@ -156,10 +164,13 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
             while True:
                 pcm = await ws.receive_bytes()
                 state["audio_bytes"] += len(pcm)
+                if rec:
+                    rec.write(pcm)
                 await session.push_audio(pcm)
-        except WebSocketDisconnect:
-            pass
+        except WebSocketDisconnect as e:
+            final = e.code == 1000  # the control page closes with 1000 on Stop; drops are 1001/1006
         finally:
+            recordings.detach(sid, final)
             state["audio_clients"] -= 1
             await session.close()
             task.cancel()
@@ -198,6 +209,7 @@ def create_app(settings: Settings | None = None, zoom: ZoomPoster | None = None)
             "finals": pipe.finals,
             "translate_errors": pipe.errors,
             "zoom": zoom.status(),
+            "recording": recordings.status(),
             "lan_base": (f"http://{ip}:{s.port}" if s.host not in ("127.0.0.1", "localhost", "::1")
                          and (ip := lan_ip()) else ""),
         }

@@ -66,3 +66,6 @@ uv run python scripts/zoom_probe.py   # Phase 1: post test lines to a live meeti
   AssemblyAI streaming can't do Thai (tested: rejects `th`, garbles Thai), so **Soniox** (`STT_ENGINE=soniox`,
   `stt-rt-v6`, USD 0.12/h, EN+TH in one stream) was added. TH→EN translation tested live; **Soniox not yet
   tested live** (no key yet). Thai token spacing from Soniox is unverified.
+- 28.11.2026 — Audio recording: one WAV per Start…Stop in `recordings/` (`RECORD_DIR`, git-ignored; ~115 MB/h).
+  Reconnects with the same browser session id append to the same file; header rewritten every 2 s, so a killed
+  server still leaves a playable file (tested: Ctrl-C and SIGKILL). REC timer on the control page.

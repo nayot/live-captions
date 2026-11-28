@@ -38,6 +38,13 @@ network (they get the display only). Options: text size, number of lines, alignm
 (black/green/blue/custom, for chroma key), text colour, header on/off, show the original or the translation
 only, and the changing draft while speaking (off by default: lines appear once, finished).
 
+## Recording
+
+Each **Start listening** records the room audio to `recordings/recording-YYYYMMDD-HHMMSS.wav` until **Stop**
+or until the server shuts down; a short network drop continues the same file. The file stays playable even if
+the server is killed. About 115 MB per hour (16 kHz mono). Set `RECORD_DIR=` (empty) in `.env` to turn it off.
+The English/Thai text log goes to `transcripts/`. Both folders are git-ignored.
+
 ## Windows
 
 1. Install [Google Chrome](https://www.google.com/chrome/) and [Git](https://git-scm.com/download/win)

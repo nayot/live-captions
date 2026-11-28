@@ -53,6 +53,7 @@ class Settings:
     zoom_cc_url: str
     transcript_dir: str
     glossary: Glossary
+    record_dir: str = ""  # from_env defaults to "recordings"
     openrouter_api_key: str = ""
     translate_model: str = ""
     assemblyai_api_key: str = ""
@@ -78,6 +79,7 @@ class Settings:
             zoom_max_chars=int(e("ZOOM_MAX_CHARS", "120")),
             zoom_cc_url=e("ZOOM_CC_URL", ""),
             transcript_dir=e("TRANSCRIPT_DIR", "transcripts"),
+            record_dir=e("RECORD_DIR", "recordings"),
             glossary=Glossary.load(ROOT / "config/glossary.yaml", ROOT / "config/glossary.local.yaml"),
             openrouter_api_key=e("OPENROUTER_API_KEY", ""),
             translate_model=e("TRANSLATE_MODEL", ""),
