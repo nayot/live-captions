@@ -9,10 +9,11 @@ See [PLAN.md](PLAN.md) for background.
 ## Quick start
 
 ```
-cp .env.example .env
-uv sync
-uv run python -m app
+./run.sh
 ```
+
+`run.sh` creates `.env` from `.env.example` on first run, checks the port is free, prints which page to open
+and starts the server (the same as `uv run python -m app`). On Windows, use the commands in the Windows section.
 
 Open http://localhost:8765 (control page: pick the audio input, start, optionally paste the Zoom caption
 URL) and http://localhost:8765/display on the caption screen. With the default stub engines you can type
