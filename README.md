@@ -13,7 +13,7 @@ See [PLAN.md](PLAN.md) for background.
 ```
 
 `run.sh` creates `.env` from `.env.example` on first run, checks the port is free, prints which page to open
-and starts the server (the same as `uv run python -m app`). On Windows, use the commands in the Windows section.
+and starts the server (the same as `uv run python -m app`). On Windows, double-click `run.bat` instead.
 
 Open http://localhost:8765 (control page: pick the audio input, start, optionally paste the Zoom caption
 URL) and http://localhost:8765/display on the caption screen. With the default stub engines you can type
@@ -67,8 +67,9 @@ Both folders are git-ignored.
 4. Create `.env`: `copy .env.example .env`, then edit it in Notepad (engines and API keys). If you
    already have a working `.env` on another machine, copy that file over instead, by USB or a password
    manager — not by email or chat. Do the same for an event glossary in `config\glossary.local.yaml`.
-5. Start the app with `uv run python -m app` and open http://localhost:8765 in Chrome. Allow the
-   microphone when Chrome asks.
+5. Start the app: double-click `run.bat` (or `uv run python -m app`) and open http://localhost:8765 in
+   Chrome. Allow the microphone when Chrome asks. `run.bat` also creates `.env` if it is missing and says
+   if the server is already running.
 6. Other screens on the network (`HOST=0.0.0.0` in `.env`): set the Windows network to **Private**
    (Settings → Network & internet → your connection) and click **Allow** when Windows Firewall asks
    about Python. The control page shows the link to open on the other screens.
